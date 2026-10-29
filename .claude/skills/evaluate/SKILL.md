@@ -1,6 +1,6 @@
 ---
 name: evaluate
-description: initial-macbook-setup 폴더 전체(mac-setup.sh, config.example.sh, README.md, AGENT.md, CLAUDE.md, .claude 설정)를 "GitHub 스타를 받을 만한가·돈 받고 팔 만한가" 기준으로 10점 만점 엄격하게 채점하고 개선 계획을 세운다. "평가", "점수", "evaluate", 항목 추가 후 점검 때 사용.
+description: initial-macbook-setup 폴더 전체(mac-setup.sh, README.md, AGENT.md, CLAUDE.md, .claude 설정)를 "GitHub 스타를 받을 만한가·돈 받고 팔 만한가" 기준으로 10점 만점 엄격하게 채점하고 개선 계획을 세운다. "평가", "점수", "evaluate", 항목 추가 후 점검 때 사용.
 effort: xhigh
 ---
 
@@ -10,13 +10,13 @@ effort: xhigh
 `id_ed25519`와 `gh_token`은 열지 않는다.
 
 ## 1. 읽기
-`ls -la`로 폴더 구조를 보고 `mac-setup.sh`(나뉘었으면 관련 스크립트 전부), `config.example.sh`, `README.md`, `AGENT.md`, `CLAUDE.md`, `LICENSE`, `.github/workflows/`, `.claude/` 아래 파일을 읽는다. 개인 값(이름·이메일·저장소)이 저장소 파일에 하드코딩돼 있지 않은지도 본다.
+`ls -la`로 폴더 구조를 보고 `mac-setup.sh`(나뉘었으면 관련 스크립트 전부), `README.md`, `AGENT.md`, `CLAUDE.md`, `LICENSE`, `.github/workflows/`, `.claude/` 아래 파일을 읽는다. 개인 값(이름·이메일·저장소)이 저장소 파일에 하드코딩돼 있지 않은지도 본다.
 
 ## 1-1. 객관 점검 (결과를 점수 근거에 그대로 쓴다)
-- `bash -n mac-setup.sh && shellcheck -x mac-setup.sh config.example.sh`: 경고 0개여야 한다.
+- `bash -n mac-setup.sh && shellcheck -x mac-setup.sh`: 경고 0개여야 한다.
 - `bash mac-setup.sh | wc -l`: 기본 화면이 24줄 이하인지 본다(80×24 기본 터미널, `--dry-run`은 전부 펼치므로 제외).
-- README 2장 대조: `TASKS`의 묶음별 항목 수와 README 2장 항목 수가 같은지, `cask:`·`formula:`의 보일 이름이 README에 모두 있는지 센다.
-- `.github/workflows/ci.yml`의 `SKIP_TASKS`에 `ASKS_INPUT` 항목이 모두 들어 있는지 본다.
+- README 2장 대조: `TASKS`의 묶음별 항목 수와 README 2장 표의 묶음별 줄 수가 같은지, `cask:`·`formula:`의 보일 이름이 README에 모두 있는지 센다.
+- `.github/workflows/ci.yml`의 `CI_SKIP`에 `ASKS_INPUT` 항목이 모두 들어 있는지 본다.
 
 ## 2. 채점 (각 10점, 빡빡하게)
 

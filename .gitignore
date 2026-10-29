@@ -1,7 +1,6 @@
-# 비밀 파일·내 값: 절대 커밋하지 않는다
+# 비밀 파일: 절대 커밋하지 않는다
 id_ed25519
 id_ed25519.pub
 gh_token
 .DS_Store
 .claude/settings.local.json
-config.sh

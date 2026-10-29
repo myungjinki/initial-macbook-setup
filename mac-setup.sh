@@ -19,7 +19,7 @@ case "${1:-}" in
   -h|--help) usage; exit 0 ;;
   *) echo "알 수 없는 옵션: $1" >&2; usage >&2; exit 1 ;;
 esac
-# 파일로 실행하면 스크립트 옆의 config.sh·키·토큰을 읽음. curl로 실행하면 묻거나 새로 만듦
+# 파일로 실행하면 스크립트 옆의 키·토큰을 읽음. curl로 실행하면 새로 만들거나 브라우저로 로그인
 SCRIPT_DIR=""
 [ -f "${BASH_SOURCE[0]:-}" ] && SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 beside() { [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/$1" ]; }   # 스크립트 옆에 이 파일이 있는지
@@ -34,9 +34,6 @@ beside() { [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/$1" ]; }   # 스크립트 �
 #    group|제목    → 체크리스트의 묶음 제목
 #    group:brew|제목 → 이 묶음의 fn은 Homebrew가 있어야 함 (없으면 건너뜀)
 #    fn:이름       → 직접 만든 설정 (아래 '설정 함수' 참고)
-#
-#  내 값(git 이름·이메일, 클론할 저장소)은 파일로 실행할 때 옆의 config.sh에 적어요
-#  (형식은 config.example.sh, 없으면 이름·이메일은 맨 처음 물어보고 클론은 꺼짐)
 #
 #  앞에 # 을 붙이면 꺼짐, 지우면 켜짐
 # ============================================================
@@ -64,7 +61,6 @@ TASKS=(
   "fn:display_more_space|내장 디스플레이 해상도 'More Space'"
   "fn:brightness_max|내장 디스플레이 밝기 최대"
   "fn:git_user|git 사용자 이름·이메일"
-  "fn:clone_repos|config.sh의 저장소 클론 (CLONE_REPOS)"
   "fn:brew_path|새 터미널에서 brew 쓰기 (~/.zprofile)"
   "fn:git_pull_merge|git pull은 merge로 (pull.rebase false)"
 
@@ -82,17 +78,11 @@ TASKS=(
 # 이 fn 항목들은 입력을 받아요 — 오래 걸리는 설치 전에 맨 먼저 실행
 ASKS_INPUT="ssh_key ssh_keychain gh_login"
 
-# 내 값 — config.sh에서 덮어씀 (형식은 config.example.sh)
+# git 이름·이메일은 맨 처음 물어봄 (ask_git_user)
 GIT_NAME=""
 GIT_EMAIL=""
-CLONE_REPOS=()   # "owner/저장소|클론할 위치"
-DISPLAY_RES=""   # 내장 디스플레이 'More Space' 해상도. 비워 두면 자동 판별
-SKIP_TASKS=()    # 끌 항목 이름 (예: volume_min discord)
-EXTRA_CASKS=()   # 더 설치할 앱 (brew cask 이름)
-# shellcheck source=config.example.sh
-beside config.sh && . "$SCRIPT_DIR/config.sh"
-for c in "${EXTRA_CASKS[@]+"${EXTRA_CASKS[@]}"}"; do TASKS+=("cask:$c|$c"); done   # 앱 설치 묶음 끝에 붙음
-skipped() { [[ " ${SKIP_TASKS[*]+"${SKIP_TASKS[*]}"} " == *" ${1#*:} "* ]]; }   # 예: skipped fn:volume_min
+# CI 전용: 입력이 필요하거나 CI 맥에서 못 도는 항목을 끔 (예: CI_SKIP="ssh_key gh_login")
+skipped() { [[ " ${CI_SKIP:-} " == *" ${1#*:} "* ]]; }   # 예: skipped fn:volume_min
 
 # ============================================================
 #  ⚙️ 설정 함수 — fn:이름 을 쓰려면 두 개를 만들어요
@@ -193,13 +183,12 @@ builtin_block() {  # 내장 디스플레이 부분만 출력
     END { if (b) printf "%s", buf }'
 }
 more_space_res() {  # More Space = 내장 디스플레이의 가장 큰 scaling:on 해상도
-  [ -n "$DISPLAY_RES" ] && { echo "$DISPLAY_RES"; return; }
   local res
   res=$(builtin_block | awk '/^ *mode [0-9]+:/ && /scaling:on/ {
       match($0, /res:[0-9]+x[0-9]+/); r = substr($0, RSTART + 4, RLENGTH - 4)
       split(r, a, "x"); if (a[1] * a[2] > max) { max = a[1] * a[2]; best = r } }
     END { print best }')
-  [ -n "$res" ] || { echo "More Space 해상도를 못 찾았어요. 맨 위 DISPLAY_RES에 직접 적어 주세요" >&2; return 1; }
+  [ -n "$res" ] || { echo "More Space 해상도를 못 찾았어요" >&2; return 1; }
   echo "$res"
 }
 check_display_more_space() {
@@ -254,21 +243,16 @@ check_brightness_max() { has_xcode || return 1; awk -v v="$(brightness get)" 'BE
 do_brightness_max()    { brightness set 1.0; }
 
 # git 사용자 (git은 Xcode 도구에 포함, 없으면 팝업이 뜨므로 먼저 확인)
-# config.sh가 비어 있으면 맨 처음 물어봄 (git은 나중에 Xcode 도구가 생긴 뒤 설정)
+# 아직 설정 안 됐으면 맨 처음 물어봄 (git은 나중에 Xcode 도구가 생긴 뒤 설정)
 ask_git_user() {
-  [ -n "$GIT_NAME" ] || read -rp "📝 git 이름: " GIT_NAME </dev/tty
-  [ -n "$GIT_EMAIL" ] || read -rp "📝 git 이메일: " GIT_EMAIL </dev/tty
+  read -rp "📝 git 이름: " GIT_NAME </dev/tty
+  read -rp "📝 git 이메일: " GIT_EMAIL </dev/tty
 }
 check_git_user() {
-  has_xcode || return 1
-  if [ -n "$GIT_NAME" ]; then
-    [ "$(git config --global user.name)" = "$GIT_NAME" ] && [ "$(git config --global user.email)" = "$GIT_EMAIL" ]
-  else
-    [ -n "$(git config --global user.name)" ] && [ -n "$(git config --global user.email)" ]
-  fi
+  has_xcode && [ -n "$(git config --global user.name)" ] && [ -n "$(git config --global user.email)" ]
 }
 do_git_user() {
-  if [ -z "$GIT_NAME" ] || [ -z "$GIT_EMAIL" ]; then echo "git 이름·이메일이 비어 있어요 (config.sh)"; return 1; fi
+  if [ -z "$GIT_NAME" ] || [ -z "$GIT_EMAIL" ]; then echo "git 이름·이메일이 비어 있어요"; return 1; fi
   git config --global user.name "$GIT_NAME" && git config --global user.email "$GIT_EMAIL"
 }
 
@@ -311,24 +295,6 @@ check_ssh_key_github() {
   gh_cmd ssh-key list 2>/dev/null | grep -qF "$k"
 }
 do_ssh_key_github() { gh_cmd ssh-key add "$HOME/.ssh/id_ed25519.pub" --title "$(scutil --get ComputerName)"; }
-
-# 저장소 클론: github.com 호스트 키가 없으면 SSH가 막히므로 GitHub API(HTTPS)로 받아 known_hosts에 추가
-repo_dir() { local d="${1#*|}"; echo "${d/#\~/$HOME}"; }   # "owner/저장소|위치" → 위치
-off_clone_repos() { [ "${#CLONE_REPOS[@]}" -eq 0 ]; }
-check_clone_repos() {
-  local r
-  for r in "${CLONE_REPOS[@]}"; do [ -d "$(repo_dir "$r")/.git" ] || return 1; done
-}
-do_clone_repos() {
-  local kh="$HOME/.ssh/known_hosts" r d
-  if ! ssh-keygen -F github.com -f "$kh" >/dev/null 2>&1; then
-    mkdir -p "$HOME/.ssh" && gh_cmd api meta --jq '.ssh_keys[] | "github.com " + .' >> "$kh" || return 1
-  fi
-  for r in "${CLONE_REPOS[@]}"; do
-    d=$(repo_dir "$r")
-    [ -d "$d/.git" ] || { mkdir -p "$(dirname "$d")" && gh_cmd repo clone "${r%%|*}" "$d"; } || return 1
-  done
-}
 
 # git pull 시 rebase 대신 merge (git은 Xcode 도구에 포함, 없으면 팝업이 뜨므로 먼저 확인)
 check_git_pull_merge() { has_xcode && [ "$(git config --global pull.rebase)" = false ]; }
