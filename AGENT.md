@@ -1,6 +1,6 @@
 # AGENT.md — mac-setup.sh 작업 규칙
 
-원본: `~/Downloads/initial-setup-macbook`(git, 공개 저장소). 배포본: `~/Documents/initial-setup-macbook`(iCloud, `mac-setup.sh`·`README.md`·`config.sh`·키·토큰).
+원본: `~/Downloads/initial-setup-macbook`(git, GitHub 저장소). 배포본: `~/Documents/initial-setup-macbook`(iCloud, `mac-setup.sh`·`README.md`·`config.sh`·키·토큰).
 고치는 건 원본만 하고, 실행은 배포본으로 한다.
 
 ## 설정·설치를 추가할 때마다

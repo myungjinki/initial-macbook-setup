@@ -149,6 +149,12 @@ do_oh_my_zsh() {
   [ -f "$HOME/.zshrc" ] || cp "$HOME/.oh-my-zsh/templates/zshrc.zsh-template" "$HOME/.zshrc"
 }
 
+# 내장 디스플레이가 없으면(데스크톱 맥·덮개 닫힘) 해상도·밝기 항목은 꺼짐
+# GPU의 'Bus: Built-In'은 데스크톱에도 있어서 연결 방식으로 확인
+no_builtin_display() { ! system_profiler SPDisplaysDataType 2>/dev/null | grep -q 'Connection Type: Internal'; }
+off_display_more_space() { no_builtin_display; }
+off_brightness_max()     { no_builtin_display; }
+
 # 내장 디스플레이 'More Space' — displayplacer로 자동 판별
 # system_profiler는 외부 모니터가 있으면 값이 섞여서 쓰지 않음
 builtin_block() {  # 내장 디스플레이 부분만 출력
