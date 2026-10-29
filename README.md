@@ -1,29 +1,29 @@
 # 🍎 Initial MacBook Setup
 
-포맷한 맥에서 **터미널**을 열고 이 한 줄을 붙여 넣으면 끝이에요. 미리 준비할 건 없어요. 👍
+포맷한 맥에서 **터미널**을 열고 이 한 줄 붙여 넣기. 끝. 미리 준비할 것 없음. 👍
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/myungjinki/initial-macbook-setup/main/mac-setup.sh)"
 ```
 
-> 🤖 **설정이나 설치하고 싶은 게 있으면 AI로 추가하세요.** 이 저장소를 fork해서 Claude Code 같은 AI 코딩 도구에 "Slack 설치 추가해 줘", "Finder에서 숨김 파일 보이게 해 줘"처럼 말하면 돼요. AI가 [AGENT.md](AGENT.md)의 규칙대로 항목을 넣고, 두 번 실행해서 확인까지 해요. 직접 고치는 방법은 [3장](#3-항목-추가하기)에 있어요.
+> 🤖 **설정·설치 추가는 AI로.** 이 저장소를 fork하고 Claude Code 같은 AI 코딩 도구에 "Slack 설치 추가해 줘", "Finder에서 숨김 파일 보이게 해 줘"처럼 말하면 됨. AI가 [AGENT.md](AGENT.md) 규칙대로 항목을 넣고 두 번 실행해서 확인까지 함. 직접 고치는 법은 [3장](#3-항목-추가하기).
 
-- 요구 사항: macOS 27 · Apple Silicon에서 테스트했어요(CI는 GitHub의 macos-latest). Intel 맥도 지원하지만 직접 확인하지는 않았어요.
-- 먼저 무엇을 할지만 보려면 끝에 `_ --dry-run`을 붙여요. 아무것도 바꾸지 않아요.
+- 요구 사항: macOS 27 · Apple Silicon에서 테스트(CI는 GitHub macos-latest). Intel 맥도 지원, 직접 확인은 안 함.
+- 할 일만 미리 보기: 끝에 `_ --dry-run`. 아무것도 안 바꿈.
 
   ```bash
   bash -c "$(curl -fsSL https://raw.githubusercontent.com/myungjinki/initial-macbook-setup/main/mac-setup.sh)" _ --dry-run
   ```
-- 입력은 맨 처음에만 해요. 그다음은 자동으로 진행돼요.
+- 입력은 맨 처음에만. 그다음은 자동.
   - `git 이름`·`git 이메일`
   - 비밀번호를 물으면 **관리자 비밀번호**
-  - 새 SSH 키의 **키 암호 정하기** (두 번), `Enter passphrase`가 나오면 그 **키 암호** 한 번 더 (키체인에 저장돼서 다시 안 물음)
-  - 브라우저가 열리면 **GitHub 로그인**: 클립보드에 복사된 코드를 붙여 넣고 승인
-- 처음 실행할 때 Homebrew가 Xcode Command Line Tools도 같이 설치해서 10분 넘게 걸릴 수 있어요.
-- 끝나면 새 터미널 창을 열어요. 그래야 `brew` 명령이 잡혀요.
-- 몇 번을 다시 실행해도 안전해요. 실행 전에 내용을 보고 싶으면 [mac-setup.sh](mac-setup.sh)를 열어 보세요.
+  - 새 SSH 키의 **키 암호 정하기** (두 번), `Enter passphrase`가 나오면 그 **키 암호** 한 번 더 (키체인에 저장, 다시 안 물음)
+  - 브라우저가 열리면 **GitHub 로그인**: 클립보드에 복사된 코드 붙여 넣고 승인
+- 첫 실행은 Homebrew가 Xcode Command Line Tools도 설치해서 10분 넘게 걸릴 수 있음.
+- 끝나면 새 터미널 창 열기. 그래야 `brew`가 잡힘.
+- 몇 번 다시 실행해도 안전. 실행 전 내용 확인은 [mac-setup.sh](mac-setup.sh).
 
-실행 화면 (다 끝난 맥에서 다시 실행했을 때). 진행 중이거나 실패한 묶음만 펼쳐져요.
+실행 화면 (다 끝난 맥에서 다시 실행). 진행 중·실패한 묶음만 펼쳐짐.
 
 ```
 🍎 맥 세팅 체크리스트  (22/22)
@@ -40,24 +40,24 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/myungjinki/initial-macbo
 🎉 전부 이미 됨. 할 일 없음!
 ```
 
-## 1. 받은 폴더에서 실행하기 (선택)
+## 1. 받은 폴더에서 실행 (선택)
 
-curl 한 줄이면 충분해요. 입력을 미리 넣어 두고 싶을 때만 이 저장소를 받아서 `mac-setup.sh` 옆에 아래 파일을 두고 `bash mac-setup.sh`로 실행해요. 이 파일들은 `.gitignore`에 있어서 커밋되지 않아요.
+curl 한 줄이면 충분. 입력을 줄이고 싶을 때만 저장소를 받아 `mac-setup.sh` 옆에 아래 파일을 두고 `bash mac-setup.sh`로 실행. 이 파일들은 `.gitignore`에 있어서 커밋 안 됨.
 
 | 옆에 둘 파일 | 만드는 법 | 없으면 |
 |---|---|---|
-| `id_ed25519`, `id_ed25519.pub` | `cp ~/.ssh/id_ed25519* .` (지금 쓰는 SSH 키) | 새 키를 만들고 GitHub에 등록해요 |
-| `gh_token` | 아래 명령 | 브라우저에서 GitHub 로그인을 한 번 해요 |
+| `id_ed25519`, `id_ed25519.pub` | `cp ~/.ssh/id_ed25519* .` (지금 쓰는 SSH 키) | 새 키 만들고 GitHub에 등록 |
+| `gh_token` | 아래 명령 | 브라우저로 GitHub 로그인 한 번 |
 
-`gh_token`은 **GitHub → Settings → Developer settings → Personal access tokens**에서 `repo`, `read:org`, `admin:public_key` 권한으로 만들고(만료 기간을 두는 게 안전해요), 복사한 뒤 받은 폴더에서 저장해요. 만료되면 GitHub 로그인 항목이 ❌로 나와요.
+`gh_token`: **GitHub → Settings → Developer settings → Personal access tokens**에서 `repo`, `read:org`, `admin:public_key` 권한으로 만들고(만료 기간 두는 게 안전) 복사한 뒤 받은 폴더에서 저장. 만료되면 GitHub 로그인 항목이 ❌.
 
 ```bash
 pbpaste > gh_token && chmod 600 gh_token
 ```
 
-## 2. 스크립트가 해 주는 것
+## 2. 스크립트가 하는 것
 
-진행 상황을 `상태 │ 결과 │ 항목` 표로 보여줘요(⬜ 대기 → ⏳ 진행 중 → ✅ 완료/이미 됨, ❌ 실패, ➖ 꺼짐, ⏭️ brew 필요). 기본 터미널 창(80×24)에 들어가도록 묶음은 한 줄로 접혀요. 이미 된 항목은 "이미 됨"으로 건너뛰어서 **몇 번을 다시 실행해도 안전해요.**
+진행 상황은 `상태 │ 결과 │ 항목` 표(⬜ 대기 → ⏳ 진행 중 → ✅ 완료/이미 됨, ❌ 실패, ➖ 꺼짐, ⏭️ brew 필요). 기본 터미널 창(80×24)에 들어가게 묶음은 한 줄로 접힘. 이미 된 항목은 "이미 됨"으로 건너뜀 → **몇 번 다시 실행해도 안전.**
 
 | 묶음 | 항목 | 내용 |
 |---|---|---|
@@ -84,27 +84,26 @@ pbpaste > gh_token && chmod 600 gh_token
 | | Discord | |
 | | GitHub CLI (gh) | |
 
-- 비밀번호는 Homebrew 설치나 pkg형 앱 설치가 남아 있을 때만 물어요.
-- 실패한 항목은 바로 아래에 로그 마지막 5줄이 보여요. 전체 로그는 `~/Library/Logs/mac-setup.log`에 실행마다 이어서 쌓여요.
-- Homebrew가 없으면 brew가 필요한 항목(5·6번)은 ⏭️로 건너뛰어요.
+- 비밀번호는 Homebrew 설치나 pkg형 앱 설치가 남아 있을 때만 물음.
+- 실패한 항목은 바로 아래에 로그 마지막 5줄. 전체 로그는 `~/Library/Logs/mac-setup.log`에 실행마다 이어서 쌓임.
+- Homebrew가 없으면 brew가 필요한 항목(5·6번)은 ⏭️로 건너뜀.
 
 ## 3. 항목 추가하기
 
-항목을 끄거나 더하려면 이 저장소를 fork해서 `mac-setup.sh` 위쪽의 `TASKS` 목록에 한 줄씩 추가하고, 맨 위 명령의 `myungjinki`를 내 GitHub 아이디로 바꿔서 실행해요(1장처럼 받은 폴더에서 실행해도 돼요).
+이 저장소를 fork해서 `mac-setup.sh` 위쪽 `TASKS` 목록에 한 줄씩 추가(끄려면 앞에 `#`). 맨 위 명령의 `myungjinki`를 내 GitHub 아이디로 바꿔서 실행(1장처럼 받은 폴더에서 실행해도 됨).
 
 | 형식 | 의미 |
 |---|---|
 | `"cask:이름\|보일 이름"` | 앱 설치 (`brew install --cask`) |
 | `"formula:이름\|보일 이름"` | 터미널 도구 설치 (`brew install`) |
-| `"fn:이름\|보일 이름"` | 직접 만든 설정. `check_이름`(이미 됐는지 확인)과 `do_이름`(실제 설정) 함수가 필요해요. `off_이름`(선택)이 성공하면 ➖ 꺼짐, `ask_이름`(선택)은 맨 처음 값을 물어봐요 |
+| `"fn:이름\|보일 이름"` | 직접 만든 설정. `check_이름`(이미 됐는지 확인)과 `do_이름`(실제 설정) 함수 필요. `off_이름`(선택)이 성공하면 ➖ 꺼짐, `ask_이름`(선택)은 맨 처음 값을 물음 |
 | `"group\|제목"` | 표에 보일 묶음 제목 |
-| `"group:brew\|제목"` | 이 묶음의 항목은 Homebrew가 있어야 해요 (없으면 ⏭️) |
+| `"group:brew\|제목"` | 이 묶음 항목은 Homebrew 필요 (없으면 ⏭️) |
 
-- brew가 필요한 `fn` 설정은 `group:brew` 묶음(5번) 끝에 넣어요.
-- pkg형 앱(`brew info --cask 이름`에 `(Pkg)`)은 6번 맨 앞에 넣어요. 설치 후 뜨는 창을 일찍 볼 수 있어요.
-- `fn` 설정이 입력을 받으면 이름을 `ASKS_INPUT`에도 적어요. 오래 걸리는 설치 전에 맨 먼저 실행돼요.
-- 줄 앞에 `#`을 붙이면 그 항목은 꺼져요.
-- push하면 CI가 `shellcheck`와 macOS에서 두 번 실행하기(두 번째는 전부 "이미 됨")를 확인해요. 입력을 받는 항목은 `.github/workflows/ci.yml`의 `CI_SKIP`에 넣어요.
+- brew가 필요한 `fn` 설정은 `group:brew` 묶음(5번) 끝에.
+- pkg형 앱(`brew info --cask 이름`에 `(Pkg)`)은 6번 맨 앞에. 설치 후 뜨는 창을 일찍 보려고.
+- 입력을 받는 `fn`은 이름을 `ASKS_INPUT`에도 적기. 오래 걸리는 설치 전에 맨 먼저 실행됨.
+- push하면 CI가 `shellcheck`와 macOS 두 번 실행(두 번째는 전부 "이미 됨")을 확인. 입력을 받는 항목은 `.github/workflows/ci.yml`의 `CI_SKIP`에 넣기.
 
 ## 라이선스
 
