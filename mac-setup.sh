@@ -1,0 +1,415 @@
+#!/bin/bash
+# 🍎 맥 초기 세팅 스크립트
+# 실행: bash ~/Documents/initial-setup-macbook/mac-setup.sh
+set -uo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ============================================================
+#  📋 할 일 목록 — 여기에 한 줄씩 추가하면 끝!
+#
+#  형식: "종류:이름|화면에 보일 이름"
+#    brew          → Homebrew 자체 (맨 처음에 두기)
+#    cask:이름     → 앱 설치        (brew install --cask 이름)
+#    formula:이름  → 터미널 도구    (brew install 이름)
+#    group|제목    → 체크리스트의 묶음 제목
+#    group:brew|제목 → 이 묶음의 fn은 Homebrew가 있어야 함 (없으면 건너뜀)
+#    fn:이름       → 직접 만든 설정 (아래 '설정 함수' 참고)
+#
+#  앞에 # 을 붙이면 꺼짐, 지우면 켜짐
+# ============================================================
+TASKS=(
+  "group|🍺 Homebrew"   # 맨 처음
+  "brew|Homebrew"
+
+  "group|🐚 Oh My Zsh"   # brew가 아닌 공식 스크립트로 설치
+  "fn:oh_my_zsh|Oh My Zsh"
+
+  "group|🔑 SSH 키"
+  "fn:ssh_key|SSH 키를 ~/.ssh로 복사"
+  "fn:ssh_config|~/.ssh/config에 키체인 사용 설정"
+  "fn:ssh_keychain|SSH 키 암호를 키체인에 저장 (처음 한 번 입력)"   # ASKS_INPUT
+
+  "group|⚙️  맥 설정"   # 새 설정은 이 묶음 끝에
+  "fn:key_repeat|키 반복 속도 Fast · 반복 지연 Short"
+  "fn:volume_min|음량 0"
+  "fn:dock_clear|Dock 기본 앱 전부 빼기 (Finder·휴지통은 남음)"
+  # "fn:finder_hidden|Finder 숨김 파일 보이기"
+
+  "group:brew|⚙️  Homebrew가 있어야 하는 설정"   # brightness·git은 Xcode 도구 사용
+  "fn:display_more_space|내장 디스플레이 해상도 'More Space'"
+  "fn:brightness_max|내장 디스플레이 밝기 최대"
+  "fn:git_user|git 사용자 이름·이메일"
+  "fn:gh_login|GitHub CLI(gh) 설치·로그인 (gh_token 파일)"
+  "fn:clone_vault|repo를 ~/Downloads에 클론"
+  "fn:brew_path|새 터미널에서 brew 쓰기 (~/.zprofile)"
+
+  "group|📦 앱 설치"   # 새 설치는 이 묶음 끝에 (pkg형은 맨 앞)
+  "cask:google-drive|Google Drive"   # pkg형: 설치 후 뜨는 창을 일찍 보도록
+  "cask:rectangle|Rectangle (창 정리)"
+  "cask:google-chrome|Chrome"
+  "cask:claude|Claude 데스크톱"
+  "cask:chatgpt|ChatGPT 데스크톱"
+  "cask:discord|Discord"
+  # "formula:git|Git"
+)
+
+# 내장 디스플레이 'More Space' 해상도. 비워 두면 자동 판별
+DISPLAY_RES=""
+# 이 fn 항목들은 입력을 받아요 — 오래 걸리는 설치 전에 맨 먼저 실행
+ASKS_INPUT="ssh_keychain"
+# git config --global 에 넣을 값
+GIT_NAME=""
+GIT_EMAIL=""
+# gh repo clone 할 저장소와 위치
+VAULT_REPO="owner/repo"
+VAULT_DIR="$HOME/Downloads/repo"
+
+# ============================================================
+#  ⚙️ 설정 함수 — fn:이름 을 쓰려면 두 개를 만들어요
+#    check_이름 : 이미 돼 있는지 확인 (돼 있으면 건너뜀)
+#    do_이름    : 실제로 설정하는 명령
+# ============================================================
+# SSH 키: 스크립트 옆의 id_ed25519(.pub)를 ~/.ssh로 복사 (이미 있으면 건너뜀)
+check_ssh_key() { [ -f "$HOME/.ssh/id_ed25519" ] && [ -f "$HOME/.ssh/id_ed25519.pub" ]; }
+do_ssh_key() {
+  local f
+  mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh" || return 1
+  for f in id_ed25519 id_ed25519.pub; do
+    [ -f "$SCRIPT_DIR/$f" ] || { echo "$SCRIPT_DIR/$f 이 없어요"; return 1; }
+    [ -f "$HOME/.ssh/$f" ] || cp "$SCRIPT_DIR/$f" "$HOME/.ssh/$f" || return 1
+  done
+  chmod 600 "$HOME/.ssh/id_ed25519" && chmod 644 "$HOME/.ssh/id_ed25519.pub"
+}
+
+# SSH 키 암호를 키체인에서 꺼내 쓰도록 설정 (재부팅해도 다시 안 물음)
+check_ssh_config() { grep -qi '^ *UseKeychain yes' "$HOME/.ssh/config" 2>/dev/null; }
+do_ssh_config() {
+  mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh" || return 1
+  printf 'Host *\n  UseKeychain yes\n  AddKeysToAgent yes\n' >> "$HOME/.ssh/config" && chmod 600 "$HOME/.ssh/config"
+}
+
+# 암호를 키체인에 한 번 저장. 암호 없는 키면 할 일 없음
+# 키체인 항목은 security로 안 보여서 에이전트에 올라왔는지로 확인
+# (재부팅 직후엔 에이전트가 비어 '완료'로 나오지만, 키체인에서 꺼내므로 암호는 다시 안 물음)
+check_ssh_keychain() {
+  local k="$HOME/.ssh/id_ed25519" fp
+  [ -f "$k" ] && [ -f "$k.pub" ] || return 1
+  ssh-keygen -y -P "" -f "$k" >/dev/null 2>&1 && return 0
+  fp=$(ssh-keygen -lf "$k.pub" | awk '{print $2}')
+  ssh-add -l 2>/dev/null | grep -qF "$fp"
+}
+do_ssh_keychain() {
+  check_ssh_key || do_ssh_key || return 1   # 맨 먼저 실행되니 키 복사가 아직일 수 있음
+  ssh-add --apple-use-keychain "$HOME/.ssh/id_ed25519"
+}
+
+# 키 반복: 설정 화면 기준 Fast = 2, Short = 15 (적용은 로그아웃 후)
+check_key_repeat() {
+  [ "$(defaults read -g KeyRepeat 2>/dev/null)" = 2 ] && [ "$(defaults read -g InitialKeyRepeat 2>/dev/null)" = 15 ]
+}
+do_key_repeat() {
+  defaults write -g KeyRepeat -int 2 && defaults write -g InitialKeyRepeat -int 15 \
+    && NOTES+=("⌨️  키 반복 설정은 로그아웃 후 다시 로그인하면 적용돼요")
+}
+
+# 음량 0
+check_volume_min() { [ "$(osascript -e 'output volume of (get volume settings)')" = 0 ]; }
+do_volume_min()    { osascript -e 'set volume output volume 0'; }
+
+# Dock 기본 앱 전부 빼기 (실행 중인 앱은 그대로 보임)
+check_dock_clear() { ! defaults read com.apple.dock persistent-apps 2>/dev/null | grep -q tile-data; }
+do_dock_clear()    { defaults write com.apple.dock persistent-apps -array && killall Dock; }
+
+# Finder 숨김 파일 보이기 (꺼 둠)
+check_finder_hidden() { [ "$(defaults read com.apple.finder AppleShowAllFiles 2>/dev/null)" = "1" ]; }
+do_finder_hidden()    { defaults write com.apple.finder AppleShowAllFiles -bool true && killall Finder; }
+
+# Oh My Zsh: brew 패키지가 없어 공식 스크립트로 설치
+# 공식 스크립트는 git(Xcode 도구)이 필요해서, 없으면 GitHub 압축 파일로 설치
+check_oh_my_zsh() { [ -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ] && [ -f "$HOME/.zshrc" ]; }
+do_oh_my_zsh() {
+  if xcode-select -p >/dev/null 2>&1; then
+    [ -d "$HOME/.oh-my-zsh" ] || { sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || return 1; }
+  elif [ ! -d "$HOME/.oh-my-zsh" ]; then
+    local tmp; tmp=$(mktemp -d) || return 1
+    curl -fsSL https://github.com/ohmyzsh/ohmyzsh/archive/refs/heads/master.tar.gz | tar xz -C "$tmp" \
+      && mv "$tmp/ohmyzsh-master" "$HOME/.oh-my-zsh" || return 1
+  fi
+  [ -f "$HOME/.zshrc" ] || cp "$HOME/.oh-my-zsh/templates/zshrc.zsh-template" "$HOME/.zshrc"
+}
+
+# 내장 디스플레이 'More Space' — displayplacer로 자동 판별
+# system_profiler는 외부 모니터가 있으면 값이 섞여서 쓰지 않음
+builtin_block() {  # 내장 디스플레이 부분만 출력
+  displayplacer list | awk '
+    /^Persistent screen id:/ { if (b) exit; buf = "" }
+    { buf = buf $0 "\n" }
+    /^Type:/ && tolower($0) ~ /built.?in/ { b = 1 }
+    END { if (b) printf "%s", buf }'
+}
+more_space_res() {  # More Space = 내장 디스플레이의 가장 큰 scaling:on 해상도
+  [ -n "$DISPLAY_RES" ] && { echo "$DISPLAY_RES"; return; }
+  local res
+  res=$(builtin_block | awk '/^ *mode [0-9]+:/ && /scaling:on/ {
+      match($0, /res:[0-9]+x[0-9]+/); r = substr($0, RSTART + 4, RLENGTH - 4)
+      split(r, a, "x"); if (a[1] * a[2] > max) { max = a[1] * a[2]; best = r } }
+    END { print best }')
+  [ -n "$res" ] || { echo "More Space 해상도를 못 찾았어요. 맨 위 DISPLAY_RES에 직접 적어 주세요" >&2; return 1; }
+  echo "$res"
+}
+check_display_more_space() {
+  command -v displayplacer >/dev/null || return 1
+  local res; res=$(more_space_res) || return 1
+  builtin_block | grep 'current mode' | grep -q "res:$res "
+}
+do_display_more_space() {
+  command -v displayplacer >/dev/null || brew install displayplacer \
+    || brew install jakehilborn/jakehilborn/displayplacer || return 1
+  local id res mode
+  id=$(builtin_block | awk '/^Persistent screen id:/{print $4; exit}')
+  [ -n "$id" ] || { echo "내장 디스플레이를 못 찾았어요"; return 1; }
+  res=$(more_space_res) || return 1
+  # 같은 해상도 중 주사율이 가장 높은 모드 (ProMotion 120Hz)
+  mode=$(builtin_block | awk -v r="res:$res " '
+    /^ *mode [0-9]+:/ && index($0 " ", r) && /scaling:on/ {
+      match($0, /hz:[0-9]+/); hz = substr($0, RSTART + 3, RLENGTH - 3) + 0
+      m = $2; sub(":", "", m); if (hz > best) {best = hz; bm = m}
+    }
+    END {print bm}')
+  [ -n "$mode" ] || { echo "$res 모드를 못 찾았어요"; return 1; }
+  displayplacer "id:$id mode:$mode"
+}
+
+# 내장 디스플레이 밝기 (DisplayServices 비공개 API, swift는 Xcode 도구에 포함)
+brightness() {  # brightness get | brightness set 1.0
+  local f="${TMPDIR:-/tmp}/mac-setup-brightness.swift" src
+  src=$(cat <<'SWIFT'
+import Foundation
+import CoreGraphics
+let h = dlopen("/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices", RTLD_NOW)
+typealias GetFn = @convention(c) (UInt32, UnsafeMutablePointer<Float>) -> Int32
+typealias SetFn = @convention(c) (UInt32, Float) -> Int32
+var ids = [CGDirectDisplayID](repeating: 0, count: 16); var n: UInt32 = 0
+CGGetOnlineDisplayList(16, &ids, &n)
+guard let d = ids.prefix(Int(n)).first(where: { CGDisplayIsBuiltin($0) != 0 }) else { print("내장 디스플레이 없음"); exit(1) }
+let a = CommandLine.arguments
+if a.count > 2, a[1] == "set", let v = Float(a[2]) {
+  exit(unsafeBitCast(dlsym(h, "DisplayServicesSetBrightness"), to: SetFn.self)(d, v) == 0 ? 0 : 1)
+}
+var v: Float = 0
+_ = unsafeBitCast(dlsym(h, "DisplayServicesGetBrightness"), to: GetFn.self)(d, &v)
+print(v)
+SWIFT
+)
+  [ "$(cat "$f" 2>/dev/null)" = "$src" ] || printf '%s\n' "$src" > "$f"   # 내용이 같으면 다시 안 씀
+  swift "$f" "$@" 2>/dev/null
+}
+# Xcode 도구가 없으면 swift가 설치 팝업을 띄우므로 먼저 확인
+check_brightness_max() { xcode-select -p >/dev/null 2>&1 || return 1; awk -v v="$(brightness get)" 'BEGIN { exit !(v >= 0.99) }'; }
+do_brightness_max()    { brightness set 1.0; }
+
+# git 사용자 (git은 Xcode 도구에 포함, 없으면 팝업이 뜨므로 먼저 확인)
+check_git_user() {
+  xcode-select -p >/dev/null 2>&1 || return 1
+  [ "$(git config --global user.name)" = "$GIT_NAME" ] && [ "$(git config --global user.email)" = "$GIT_EMAIL" ]
+}
+do_git_user() { git config --global user.name "$GIT_NAME" && git config --global user.email "$GIT_EMAIL"; }
+
+# GitHub CLI 로그인: 스크립트 옆의 gh_token 파일로 로그인 (입력 없음, gh가 없으면 먼저 설치)
+check_gh_login() { command -v gh >/dev/null && gh auth status -h github.com >/dev/null 2>&1; }
+do_gh_login() {
+  local t="$SCRIPT_DIR/gh_token"
+  [ -s "$t" ] || { echo "$t 이 없어요. GitHub 토큰을 이 파일에 저장해 주세요"; return 1; }
+  chmod 600 "$t" || return 1
+  command -v gh >/dev/null || brew install gh || return 1
+  tr -d '[:space:]' < "$t" | gh auth login -h github.com --git-protocol ssh --with-token || return 1
+  gh auth status -h github.com
+}
+
+# 저장소 클론: github.com 호스트 키가 없으면 SSH가 막히므로 GitHub API(HTTPS)로 받아 known_hosts에 추가
+check_clone_vault() { [ -d "$VAULT_DIR/.git" ]; }
+do_clone_vault() {
+  local kh="$HOME/.ssh/known_hosts"
+  if ! ssh-keygen -F github.com -f "$kh" >/dev/null 2>&1; then
+    gh api meta --jq '.ssh_keys[] | "github.com " + .' >> "$kh" || return 1
+  fi
+  mkdir -p "$(dirname "$VAULT_DIR")" && gh repo clone "$VAULT_REPO" "$VAULT_DIR"
+}
+
+# 새 터미널에서도 brew가 잡히도록 ~/.zprofile에 PATH 등록
+check_brew_path() { grep -q 'brew shellenv' "$HOME/.zprofile" 2>/dev/null; }
+do_brew_path()    { echo "eval \"\$($(command -v brew) shellenv)\"" >> "$HOME/.zprofile"; }
+
+# ============================================================
+#  아래는 엔진 부분 — 보통은 건드릴 필요 없어요
+# ============================================================
+LOG="$HOME/mac-setup.log"
+: > "$LOG"
+STATUS=()
+IN_BREW_GROUP=()
+FAILLOG=()
+NOTES=()  # do_ 함수가 끝난 뒤 보여줄 안내
+
+load_brew() {
+  local b
+  for b in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    if [ -x "$b" ]; then eval "$("$b" shellenv)"; return 0; fi
+  done
+  return 1
+}
+
+# 이미 된 작업인지 확인 (비밀번호 필요 없음)
+is_done() {
+  local kind="${1%%:*}" name="${1#*:}"
+  case "$kind" in
+    brew)    load_brew ;;
+    cask)    command -v brew >/dev/null && brew list --cask "$name" >/dev/null 2>&1 ;;
+    formula) command -v brew >/dev/null && brew list --formula "$name" >/dev/null 2>&1 ;;
+    fn)      "check_$name" >/dev/null 2>&1 ;;
+    *)       return 1 ;;
+  esac
+}
+
+# pkg 설치형 앱만 비밀번호가 필요 (일반 .app 복사는 필요 없음, brew가 없으면 일단 필요로 봄)
+cask_needs_sudo() {
+  command -v brew >/dev/null || return 0
+  brew info --cask --json=v2 "$1" 2>/dev/null | grep -qE '"(pkg|installer)"'
+}
+
+# Homebrew가 필요한 작업인지 (cask/formula, 또는 group:brew 묶음 안의 항목) — 인자는 TASKS 번호
+needs_brew() {
+  case "${TASKS[$1]%%|*}" in cask:*|formula:*) return 0 ;; esac
+  [ "${IN_BREW_GROUP[$1]:-0}" = 1 ]
+}
+
+# 입력을 받는 작업인지
+asks_input() { [[ "$1" == fn:* && " $ASKS_INPUT " == *" ${1#fn:} "* ]]; }
+
+# 실제 작업 실행
+run_task() {
+  local kind="${1%%:*}" name="${1#*:}"
+  case "$kind" in
+    brew)    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && load_brew ;;
+    cask)    brew install --cask "$name" ;;
+    formula) brew install "$name" ;;
+    fn)      "do_$name" ;;
+    *)       echo "알 수 없는 종류: $kind"; return 1 ;;
+  esac
+}
+
+# 체크리스트 화면 그리기
+draw() {
+  local i label icon note done_count=0 total=0
+  for i in "${!TASKS[@]}"; do
+    [ "${STATUS[$i]}" = group ] || total=$((total + 1))
+    case "${STATUS[$i]}" in done|skip) done_count=$((done_count + 1)) ;; esac
+  done
+  clear 2>/dev/null || true
+  echo "🍎 맥 세팅 체크리스트  ($done_count/$total)"
+  echo "────────────────────────────────────"
+  for i in "${!TASKS[@]}"; do
+    label="${TASKS[$i]#*|}"
+    if [ "${STATUS[$i]}" = group ]; then echo; echo " $label"; continue; fi
+    case "${STATUS[$i]}" in
+      pending) icon="⬜"; note="" ;;
+      running) icon="⏳"; note=" — 진행 중..." ;;
+      done)    icon="✅"; note=" — 완료" ;;
+      skip)    icon="✅"; note=" — 이미 됨" ;;
+      fail)    icon="❌"; note=" — 실패" ;;
+      blocked) icon="⏭️"; note=" — 건너뜀 (Homebrew 필요)" ;;
+    esac
+    echo "  $icon $label$note"
+    if [ "${STATUS[$i]}" = fail ] && [ -n "${FAILLOG[$i]:-}" ]; then
+      printf '%s\n' "${FAILLOG[$i]}" | sed 's/^/        │ /'
+    fi
+  done
+  echo "────────────────────────────────────"
+}
+
+# 1) 뭐가 이미 돼 있는지 먼저 확인
+need_work=0
+brew_group=0
+for i in "${!TASKS[@]}"; do
+  case "${TASKS[$i]%%|*}" in
+    group:brew) STATUS[$i]=group; brew_group=1; continue ;;
+    group*)     STATUS[$i]=group; brew_group=0; continue ;;
+  esac
+  IN_BREW_GROUP[$i]=$brew_group
+  if is_done "${TASKS[$i]%%|*}"; then
+    STATUS[$i]=skip
+  else
+    STATUS[$i]=pending
+    need_work=1
+  fi
+done
+
+draw
+
+# 2) 할 일이 없으면 비밀번호 없이 바로 끝
+if [ "$need_work" -eq 0 ]; then
+  echo "🎉 전부 이미 됨. 할 일 없음!"
+  exit 0
+fi
+
+# 3) 비밀번호가 필요한 작업(Homebrew 설치, pkg형 앱 설치)이 남아 있을 때만 한 번
+need_sudo=0
+for i in "${!TASKS[@]}"; do
+  [ "${STATUS[$i]}" = pending ] || continue
+  task="${TASKS[$i]%%|*}"
+  case "$task" in
+    brew) need_sudo=1 ;;
+    cask:*) cask_needs_sudo "${task#cask:}" && need_sudo=1 ;;
+  esac
+done
+if [ "$need_sudo" -eq 1 ]; then
+  echo "🔑 관리자 비밀번호를 한 번만 입력하면 나머지는 자동으로 진행돼요."
+  sudo -v || { echo "비밀번호 확인 실패로 중단했어요."; exit 1; }
+  while true; do sudo -n true; sleep 50; kill -0 "$$" || exit; done 2>/dev/null &
+  KEEPALIVE_PID=$!
+  trap 'kill "$KEEPALIVE_PID" 2>/dev/null || true' EXIT
+fi
+
+# 작업 하나 실행하고 상태 기록 (두 번째 인자가 tty면 화면에서 입력을 받음)
+run_one() {
+  local i=$1 task="${TASKS[$1]%%|*}" start rc=0
+  if needs_brew "$i" && ! command -v brew >/dev/null; then
+    STATUS[$i]=blocked; return
+  fi
+  STATUS[$i]=running
+  draw
+  echo "   자세한 진행 상황: tail -f $LOG"
+  echo "===== $task =====" >>"$LOG"
+  start=$(wc -l < "$LOG")
+  if [ "${2:-}" = tty ]; then
+    run_task "$task" </dev/tty 2>&1 | tee -a "$LOG" || rc=1
+  else
+    run_task "$task" </dev/null >>"$LOG" 2>&1 || rc=1
+  fi
+  if [ "$rc" -eq 0 ]; then
+    STATUS[$i]=done
+  else
+    STATUS[$i]=fail
+    FAILLOG[$i]=$(tail -n +$((start + 1)) "$LOG" | tail -n 5)  # 이 항목의 로그만
+  fi
+}
+
+# 4) 입력을 받는 작업(ASKS_INPUT)부터 — 오래 걸리는 설치 전에 다 물어봄
+for i in "${!TASKS[@]}"; do
+  [ "${STATUS[$i]}" = pending ] && asks_input "${TASKS[$i]%%|*}" && run_one "$i" tty
+done
+
+# 5) 나머지를 하나씩 실행하면서 체크
+for i in "${!TASKS[@]}"; do
+  [ "${STATUS[$i]}" = pending ] && run_one "$i"
+done
+
+# 6) 결과
+draw
+for n in "${NOTES[@]+"${NOTES[@]}"}"; do echo "$n"; done
+failed=0
+for s in "${STATUS[@]}"; do case "$s" in fail|blocked) failed=1 ;; esac; done
+if [ "$failed" -eq 1 ]; then
+  echo "⚠️  실패한 항목이 있어요. 로그 확인: tail -n 40 $LOG"
+  exit 1
+fi
+echo "🎉 모두 완료! 새 터미널을 열면 brew를 바로 쓸 수 있어요."
