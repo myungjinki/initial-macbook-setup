@@ -1,13 +1,13 @@
 # AGENT.md — mac-setup.sh 작업 규칙
 
-원본: `~/Downloads/initial-macbook-setup`(git, GitHub 저장소). 배포본: `~/Documents/initial-macbook-setup`(iCloud, `mac-setup.sh`·`README.md`·`config.sh`·키·토큰).
+원본: 이 저장소(git, GitHub). 배포본: `~/Documents/initial-macbook-setup`(iCloud, `mac-setup.sh`·`README.md`·`config.sh`·키·토큰).
 고치는 건 원본만 하고, 실행은 배포본으로 한다.
 
 ## 설정·설치를 추가할 때마다
 
 1. `TASKS`에 한 줄 추가한다(형식은 README 4장). `fn`이면 `check_이름`(확인만 함: sudo·변경·팝업·입력 없음)과 `do_이름`(여러 번 실행해도 안전)을 만든다. 입력을 받는 `fn`은 `ASKS_INPUT`에 넣고, 값만 물으면 `ask_이름`으로 맨 처음 묻는다.
 2. `bash -n mac-setup.sh`
-3. `cp ~/Downloads/initial-macbook-setup/{mac-setup.sh,README.md,config.example.sh} ~/Documents/initial-macbook-setup/`로 복사하고 `bash ~/Documents/initial-macbook-setup/mac-setup.sh`를 두 번 실행한다. 첫 번째는 `완료` 또는 `이미 됨`, 두 번째는 `이미 됨`이 나와야 한다.
+3. 저장소 폴더에서 `cp mac-setup.sh README.md config.example.sh ~/Documents/initial-macbook-setup/`로 복사하고 `bash ~/Documents/initial-macbook-setup/mac-setup.sh`를 두 번 실행한다. 첫 번째는 `완료` 또는 `이미 됨`, 두 번째는 `이미 됨`이 나와야 한다.
 4. README 2장 목록을 `TASKS`와 같은 순서로 업데이트한다.
 5. `/evaluate`로 채점하고 계획한 뒤 그대로 리팩토링한다. 그다음 2~3을 다시 하고, 점수(전 → 후)를 보고한다.
 
