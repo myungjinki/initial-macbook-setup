@@ -1,6 +1,6 @@
 ---
 name: evaluate
-description: initial-setup-macbook 폴더 전체(mac-setup.sh, README.md, AGENT.md, CLAUDE.md, .claude 설정)를 10점 만점으로 채점하고 개선 계획을 세운다. "평가", "점수", "evaluate", 항목 추가 후 점검 때 사용.
+description: initial-setup-macbook 폴더 전체(mac-setup.sh, config.example.sh, README.md, AGENT.md, CLAUDE.md, .claude 설정)를 10점 만점으로 채점하고 개선 계획을 세운다. "평가", "점수", "evaluate", 항목 추가 후 점검 때 사용.
 effort: xhigh
 ---
 
@@ -10,7 +10,7 @@ effort: xhigh
 `id_ed25519`와 `gh_token`은 열지 않는다.
 
 ## 1. 읽기
-`ls -la`로 폴더 구조를 보고 `mac-setup.sh`(나뉘었으면 관련 스크립트 전부), `README.md`, `AGENT.md`, `CLAUDE.md`, `.claude/` 아래 파일을 읽는다. `bash -n`으로 문법도 확인한다.
+`ls -la`로 폴더 구조를 보고 `mac-setup.sh`(나뉘었으면 관련 스크립트 전부), `config.example.sh`, `README.md`, `AGENT.md`, `CLAUDE.md`, `LICENSE`, `.claude/` 아래 파일을 읽는다. 개인 값(이름·이메일·저장소)이 원본에 하드코딩돼 있지 않은지도 본다. `bash -n`으로 문법도 확인한다.
 
 ## 2. 채점 (각 10점)
 

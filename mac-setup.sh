@@ -15,6 +15,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #    group:brew|제목 → 이 묶음의 fn은 Homebrew가 있어야 함 (없으면 건너뜀)
 #    fn:이름       → 직접 만든 설정 (아래 '설정 함수' 참고)
 #
+#  내 값(git 이름·이메일, 클론할 저장소)은 옆의 config.sh에 적어요
+#  (config.example.sh를 복사해서 만듦, 없으면 그 항목은 꺼짐)
+#
 #  앞에 # 을 붙이면 꺼짐, 지우면 켜짐
 # ============================================================
 TASKS=(
@@ -40,7 +43,7 @@ TASKS=(
   "fn:brightness_max|내장 디스플레이 밝기 최대"
   "fn:git_user|git 사용자 이름·이메일"
   "fn:gh_login|GitHub CLI(gh) 설치·로그인 (gh_token 파일)"
-  "fn:clone_vault|repo를 ~/Downloads에 클론"
+  "fn:clone_repos|config.sh의 저장소 클론 (CLONE_REPOS)"
   "fn:brew_path|새 터미널에서 brew 쓰기 (~/.zprofile)"
   "fn:git_pull_merge|git pull은 merge로 (pull.rebase false)"
 
@@ -54,26 +57,29 @@ TASKS=(
   # "formula:git|Git"
 )
 
-# 내장 디스플레이 'More Space' 해상도. 비워 두면 자동 판별
-DISPLAY_RES=""
 # 이 fn 항목들은 입력을 받아요 — 오래 걸리는 설치 전에 맨 먼저 실행
 ASKS_INPUT="ssh_keychain"
-# git config --global 에 넣을 값
+
+# 내 값 — config.sh에서 덮어씀 (형식은 config.example.sh)
 GIT_NAME=""
 GIT_EMAIL=""
-# gh repo clone 할 저장소와 위치
-VAULT_REPO="owner/repo"
-VAULT_DIR="$HOME/Downloads/repo"
+CLONE_REPOS=()   # "owner/저장소|클론할 위치"
+DISPLAY_RES=""   # 내장 디스플레이 'More Space' 해상도. 비워 두면 자동 판별
+[ -f "$SCRIPT_DIR/config.sh" ] && . "$SCRIPT_DIR/config.sh"
 
 # ============================================================
 #  ⚙️ 설정 함수 — fn:이름 을 쓰려면 두 개를 만들어요
 #    check_이름 : 이미 돼 있는지 확인 (돼 있으면 건너뜀)
 #    do_이름    : 실제로 설정하는 명령
+#    off_이름   : (선택) 성공하면 이 항목은 꺼짐 — 값이나 파일이 없을 때
 # ============================================================
 # Xcode 도구(git·swift)가 있는지. 없을 때 git·swift를 부르면 설치 팝업이 뜸
 has_xcode() { xcode-select -p >/dev/null 2>&1; }
 
 # SSH 키: 스크립트 옆의 id_ed25519(.pub)를 ~/.ssh로 복사 (이미 있으면 건너뜀)
+# 키가 어디에도 없으면 SSH 항목은 꺼짐
+no_ssh_key() { [ ! -f "$SCRIPT_DIR/id_ed25519" ] && [ ! -f "$HOME/.ssh/id_ed25519" ]; }
+off_ssh_key() { no_ssh_key; }
 check_ssh_key() { [ -f "$HOME/.ssh/id_ed25519" ] && [ -f "$HOME/.ssh/id_ed25519.pub" ]; }
 do_ssh_key() {
   local f
@@ -95,6 +101,7 @@ do_ssh_config() {
 # 암호를 키체인에 한 번 저장. 암호 없는 키면 할 일 없음
 # 키체인 항목은 security로 안 보여서 에이전트에 올라왔는지로 확인
 # (재부팅 직후엔 에이전트가 비어 '완료'로 나오지만, 키체인에서 꺼내므로 암호는 다시 안 물음)
+off_ssh_keychain() { no_ssh_key; }
 check_ssh_keychain() {
   local k="$HOME/.ssh/id_ed25519" fp
   [ -f "$k" ] && [ -f "$k.pub" ] || return 1
@@ -213,6 +220,7 @@ check_brightness_max() { has_xcode || return 1; awk -v v="$(brightness get)" 'BE
 do_brightness_max()    { brightness set 1.0; }
 
 # git 사용자 (git은 Xcode 도구에 포함, 없으면 팝업이 뜨므로 먼저 확인)
+off_git_user() { [ -z "$GIT_NAME" ] || [ -z "$GIT_EMAIL" ]; }
 check_git_user() {
   has_xcode || return 1
   [ "$(git config --global user.name)" = "$GIT_NAME" ] && [ "$(git config --global user.email)" = "$GIT_EMAIL" ]
@@ -220,6 +228,7 @@ check_git_user() {
 do_git_user() { git config --global user.name "$GIT_NAME" && git config --global user.email "$GIT_EMAIL"; }
 
 # GitHub CLI 로그인: 스크립트 옆의 gh_token 파일로 로그인 (입력 없음, gh가 없으면 먼저 설치)
+off_gh_login() { [ ! -s "$SCRIPT_DIR/gh_token" ] && ! check_gh_login; }
 check_gh_login() { command -v gh >/dev/null && gh auth status -h github.com >/dev/null 2>&1; }
 do_gh_login() {
   local t="$SCRIPT_DIR/gh_token"
@@ -231,13 +240,21 @@ do_gh_login() {
 }
 
 # 저장소 클론: github.com 호스트 키가 없으면 SSH가 막히므로 GitHub API(HTTPS)로 받아 known_hosts에 추가
-check_clone_vault() { [ -d "$VAULT_DIR/.git" ]; }
-do_clone_vault() {
-  local kh="$HOME/.ssh/known_hosts"
+repo_dir() { local d="${1#*|}"; echo "${d/#\~/$HOME}"; }   # "owner/저장소|위치" → 위치
+off_clone_repos() { [ "${#CLONE_REPOS[@]}" -eq 0 ]; }
+check_clone_repos() {
+  local r
+  for r in "${CLONE_REPOS[@]}"; do [ -d "$(repo_dir "$r")/.git" ] || return 1; done
+}
+do_clone_repos() {
+  local kh="$HOME/.ssh/known_hosts" r d
   if ! ssh-keygen -F github.com -f "$kh" >/dev/null 2>&1; then
-    gh api meta --jq '.ssh_keys[] | "github.com " + .' >> "$kh" || return 1
+    mkdir -p "$HOME/.ssh" && gh api meta --jq '.ssh_keys[] | "github.com " + .' >> "$kh" || return 1
   fi
-  mkdir -p "$(dirname "$VAULT_DIR")" && gh repo clone "$VAULT_REPO" "$VAULT_DIR"
+  for r in "${CLONE_REPOS[@]}"; do
+    d=$(repo_dir "$r")
+    [ -d "$d/.git" ] || { mkdir -p "$(dirname "$d")" && gh repo clone "${r%%|*}" "$d"; } || return 1
+  done
 }
 
 # git pull 시 rebase 대신 merge (git은 Xcode 도구에 포함, 없으면 팝업이 뜨므로 먼저 확인)
@@ -310,7 +327,7 @@ draw() {
   local i label icon note done_count=0 total=0
   for i in "${!TASKS[@]}"; do
     [ "${STATUS[$i]}" = group ] || total=$((total + 1))
-    case "${STATUS[$i]}" in done|skip) done_count=$((done_count + 1)) ;; esac
+    case "${STATUS[$i]}" in done|skip|off) done_count=$((done_count + 1)) ;; esac
   done
   clear 2>/dev/null || true
   echo "🍎 맥 세팅 체크리스트  ($done_count/$total)"
@@ -325,6 +342,7 @@ draw() {
       skip)    icon="✅"; note=" — 이미 됨" ;;
       fail)    icon="❌"; note=" — 실패" ;;
       blocked) icon="⏭️"; note=" — 건너뜀 (Homebrew 필요)" ;;
+      off)     icon="➖"; note=" — 꺼짐 (값·파일 없음)" ;;
     esac
     echo "  $icon $label$note"
     if [ "${STATUS[$i]}" = fail ] && [ -n "${FAILLOG[$i]:-}" ]; then
@@ -343,7 +361,10 @@ for i in "${!TASKS[@]}"; do
     group*)     STATUS[$i]=group; brew_group=0; continue ;;
   esac
   IN_BREW_GROUP[$i]=$brew_group
-  if is_done "${TASKS[$i]%%|*}"; then
+  task="${TASKS[$i]%%|*}"
+  if [[ "$task" == fn:* ]] && declare -F "off_${task#fn:}" >/dev/null && "off_${task#fn:}" >/dev/null 2>&1; then
+    STATUS[$i]=off
+  elif is_done "${TASKS[$i]%%|*}"; then
     STATUS[$i]=skip
   else
     STATUS[$i]=pending
