@@ -42,6 +42,7 @@ TASKS=(
   "fn:gh_login|GitHub CLI(gh) 설치·로그인 (gh_token 파일)"
   "fn:clone_vault|repo를 ~/Downloads에 클론"
   "fn:brew_path|새 터미널에서 brew 쓰기 (~/.zprofile)"
+  "fn:git_pull_merge|git pull은 merge로 (pull.rebase false)"
 
   "group|📦 앱 설치"   # 새 설치는 이 묶음 끝에 (pkg형은 맨 앞)
   "cask:google-drive|Google Drive"   # pkg형: 설치 후 뜨는 창을 일찍 보도록
@@ -69,6 +70,9 @@ VAULT_DIR="$HOME/Downloads/repo"
 #    check_이름 : 이미 돼 있는지 확인 (돼 있으면 건너뜀)
 #    do_이름    : 실제로 설정하는 명령
 # ============================================================
+# Xcode 도구(git·swift)가 있는지. 없을 때 git·swift를 부르면 설치 팝업이 뜸
+has_xcode() { xcode-select -p >/dev/null 2>&1; }
+
 # SSH 키: 스크립트 옆의 id_ed25519(.pub)를 ~/.ssh로 복사 (이미 있으면 건너뜀)
 check_ssh_key() { [ -f "$HOME/.ssh/id_ed25519" ] && [ -f "$HOME/.ssh/id_ed25519.pub" ]; }
 do_ssh_key() {
@@ -128,7 +132,7 @@ do_finder_hidden()    { defaults write com.apple.finder AppleShowAllFiles -bool 
 # 공식 스크립트는 git(Xcode 도구)이 필요해서, 없으면 GitHub 압축 파일로 설치
 check_oh_my_zsh() { [ -f "$HOME/.oh-my-zsh/oh-my-zsh.sh" ] && [ -f "$HOME/.zshrc" ]; }
 do_oh_my_zsh() {
-  if xcode-select -p >/dev/null 2>&1; then
+  if has_xcode; then
     [ -d "$HOME/.oh-my-zsh" ] || { sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || return 1; }
   elif [ ! -d "$HOME/.oh-my-zsh" ]; then
     local tmp; tmp=$(mktemp -d) || return 1
@@ -205,12 +209,12 @@ SWIFT
   swift "$f" "$@" 2>/dev/null
 }
 # Xcode 도구가 없으면 swift가 설치 팝업을 띄우므로 먼저 확인
-check_brightness_max() { xcode-select -p >/dev/null 2>&1 || return 1; awk -v v="$(brightness get)" 'BEGIN { exit !(v >= 0.99) }'; }
+check_brightness_max() { has_xcode || return 1; awk -v v="$(brightness get)" 'BEGIN { exit !(v >= 0.99) }'; }
 do_brightness_max()    { brightness set 1.0; }
 
 # git 사용자 (git은 Xcode 도구에 포함, 없으면 팝업이 뜨므로 먼저 확인)
 check_git_user() {
-  xcode-select -p >/dev/null 2>&1 || return 1
+  has_xcode || return 1
   [ "$(git config --global user.name)" = "$GIT_NAME" ] && [ "$(git config --global user.email)" = "$GIT_EMAIL" ]
 }
 do_git_user() { git config --global user.name "$GIT_NAME" && git config --global user.email "$GIT_EMAIL"; }
@@ -235,6 +239,10 @@ do_clone_vault() {
   fi
   mkdir -p "$(dirname "$VAULT_DIR")" && gh repo clone "$VAULT_REPO" "$VAULT_DIR"
 }
+
+# git pull 시 rebase 대신 merge (git은 Xcode 도구에 포함, 없으면 팝업이 뜨므로 먼저 확인)
+check_git_pull_merge() { has_xcode && [ "$(git config --global pull.rebase)" = false ]; }
+do_git_pull_merge()    { git config --global pull.rebase false; }
 
 # 새 터미널에서도 brew가 잡히도록 ~/.zprofile에 PATH 등록
 check_brew_path() { grep -q 'brew shellenv' "$HOME/.zprofile" 2>/dev/null; }

@@ -40,6 +40,7 @@ bash ~/Documents/initial-setup-macbook/mac-setup.sh
    - GitHub CLI(gh) 설치 후 이 폴더의 `gh_token`으로 로그인 (git은 SSH 방식, 파일 권한 600으로 변경)
    - `repo` 저장소를 `~/Downloads/repo`에 클론 (github.com 호스트 키도 자동 등록, 저장소·위치는 스크립트 위쪽 `VAULT_REPO`·`VAULT_DIR`)
    - 새 터미널에서 `brew`가 잡히도록 `~/.zprofile`에 PATH 등록
+   - `git pull`할 때 rebase 대신 merge (`pull.rebase false`)
 6. 앱 설치: Google Drive, Rectangle(단축키로 창 정리), Chrome, Claude 데스크톱, ChatGPT 데스크톱, Discord
 
 - 비밀번호는 Homebrew 설치나 pkg형 앱 설치가 남아 있을 때만 물어요.
@@ -48,7 +49,7 @@ bash ~/Documents/initial-setup-macbook/mac-setup.sh
 
 ## 3. 항목 추가하기
 
-`mac-setup.sh` 위쪽의 `TASKS` 목록에 한 줄씩 추가하면 돼요.
+원본 `~/Downloads/initial-setup-macbook/mac-setup.sh` 위쪽의 `TASKS` 목록에 한 줄씩 추가하고, `cp ~/Downloads/initial-setup-macbook/{mac-setup.sh,README.md} ~/Documents/initial-setup-macbook/`로 복사해요. Documents의 복사본을 고치면 다음 복사 때 덮어써져요.
 
 | 형식 | 의미 |
 |---|---|
