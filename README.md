@@ -2,8 +2,6 @@
 
 포맷·초기 설정·와이파이·iCloud 로그인까지 했다면, 남은 건 스크립트 실행 하나예요. 👍
 
-> One bash script that sets up a freshly formatted Mac: Homebrew, Oh My Zsh, SSH keys, macOS defaults, git/gh, and apps — shown as a checklist, safe to re-run. Edit `TASKS` in `mac-setup.sh` and `config.sh` to make it yours. (MIT)
-
 ## 0. 처음 한 번 준비하기 (지금 쓰는 맥에서)
 
 1. 이 저장소를 iCloud가 동기화하는 문서 폴더에 받아요. 새 맥에서는 iCloud로 같은 폴더가 내려와요.
