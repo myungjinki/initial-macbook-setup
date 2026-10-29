@@ -268,7 +268,7 @@ check_git_user() {
   fi
 }
 do_git_user() {
-  [ -n "$GIT_NAME" ] && [ -n "$GIT_EMAIL" ] || { echo "git 이름·이메일이 비어 있어요 (config.sh)"; return 1; }
+  if [ -z "$GIT_NAME" ] || [ -z "$GIT_EMAIL" ]; then echo "git 이름·이메일이 비어 있어요 (config.sh)"; return 1; fi
   git config --global user.name "$GIT_NAME" && git config --global user.email "$GIT_EMAIL"
 }
 
@@ -411,7 +411,7 @@ draw_task() {  # 항목 한 줄 (+ 실패 로그)
     blocked) icon="⏭️"; note="brew 필요" ;;
     off)     icon="➖"; note="꺼짐     " ;;
   esac
-  echo "│  $icon  │ $note│   ${TASKS[$i]#*|}"
+  echo "│  $icon  │ ${note}│   ${TASKS[$i]#*|}"
   if [ "${STATUS[$i]}" = fail ] && [ -n "${FAILLOG[$i]:-}" ]; then
     printf '%s\n' "${FAILLOG[$i]}" | sed 's/^/│      │          │     └ /'
   fi
