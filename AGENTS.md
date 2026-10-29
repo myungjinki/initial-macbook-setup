@@ -15,7 +15,7 @@
 ## 설정·설치를 추가할 때마다
 
 1. `TASKS`에 한 줄 추가한다. `fn`이면 `check_이름`(확인만 함: sudo·변경·팝업·입력 없음)과 `do_이름`(여러 번 실행해도 안전)을 만든다. 입력을 받는 `fn`은 `ASKS_INPUT`에 넣고, 값만 물으면 `ask_이름`으로 맨 처음 묻는다.
-2. `bash -n mac-setup.sh && shellcheck -x mac-setup.sh` (경고 0개)
+2. `bash -n mac-setup.sh && shellcheck -x mac-setup.sh` (경고 0개). `$변수` 바로 뒤에 한글·기호를 붙이지 않는다(`${변수}`로 쓴다, CI가 검사).
 3. 저장소 폴더에서 `bash mac-setup.sh --dry-run`으로 새 항목이 ⬜로 나오는지 본다. 실제 실행은 사용자 맥을 바꾸므로(Dock·음량·앱 설치 등) 사용자가 허락할 때만 두 번 하고, 첫 번째는 `완료` 또는 `이미 됨`, 두 번째는 `이미 됨`이 나와야 한다. 새 맥 경로(`do_`)는 push 후 CI(`.github/workflows/ci.yml`)가 두 번 실행해 확인한다. 입력을 받거나 CI 맥에서 못 도는 항목은 CI의 `CI_SKIP`에 넣는다.
 4. README 1장 표를 `TASKS`와 같은 순서로, 항목마다 한 줄씩 업데이트한다. 묶음·항목 수가 바뀌면 실행 화면도 다시 만든다: `TERM=dumb bash mac-setup.sh > /tmp/out.txt && swift docs/screen.swift /tmp/out.txt docs/screen.png`
 5. `/evaluate`로 채점하고 계획한 뒤 그대로 리팩토링한다. 그다음 2~3을 다시 하고, 점수(전 → 후)를 보고한다.

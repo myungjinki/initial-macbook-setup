@@ -271,7 +271,7 @@ get_gh() {
   rel=$(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest) || return 1
   url=$(grep -o "https://[^\"]*macOS_$arch\.zip" <<< "$rel" | head -1)
   sums=$(grep -o 'https://[^"]*_checksums\.txt' <<< "$rel" | head -1)
-  [ -n "$url" ] && [ -n "$sums" ] || { echo "gh 다운로드 주소를 못 찾았어요"; return 1; }
+  if [ -z "$url" ] || [ -z "$sums" ]; then echo "gh 다운로드 주소를 못 찾았어요"; return 1; fi
   tmp=$(mktemp -d) || return 1
   zip="${url##*/}"
   curl -fsSL "$url" -o "$tmp/$zip" && curl -fsSL "$sums" -o "$tmp/sums.txt" || return 1
@@ -419,9 +419,9 @@ draw() {
   done
   [ -n "$full" ] || clear 2>/dev/null || true
   echo "🍎 맥 세팅 체크리스트  ($done_count/$total)"
-  echo "┌──────┬──────────┬$LINE┐"
+  echo "┌──────┬──────────┬${LINE}┐"
   echo "│ 상태 │ 결과     │ $HEAD_CELL │"
-  echo "├──────┼──────────┼$LINE┤"
+  echo "├──────┼──────────┼${LINE}┤"
   for i in "${!TASKS[@]}"; do
     [ "${STATUS[$i]}" = group ] || continue
     # 묶음 요약: ❌ 실패 > ⏳ 진행 중 > ⬜·⏭️ 남음 > ✅ 끝
@@ -444,7 +444,7 @@ draw() {
       draw_task "$j"
     done
   done
-  echo "└──────┴──────────┴$LINE┘"
+  echo "└──────┴──────────┴${LINE}┘"
 }
 
 # 1) 뭐가 이미 돼 있는지 먼저 확인

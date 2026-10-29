@@ -9,6 +9,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: shellcheck -x mac-setup.sh
+      - name: $변수 바로 뒤 한글·기호 금지 (UTF-8이 아닌 로케일에서 변수 이름으로 읽힘, ${변수}로 쓰기)
+        run: |
+          ! LC_ALL=C grep -nE '\$[A-Za-z_][A-Za-z0-9_]*[^ -~]' mac-setup.sh
 
   # 새 맥 경로(do_)를 실제로 돌려 보고, 두 번째 실행이 전부 '이미 됨'인지 확인
   run-twice:
