@@ -6,6 +6,8 @@
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/myungjinki/initial-macbook-setup/main/mac-setup.sh)"
 ```
 
+> 🤖 **설정이나 설치하고 싶은 게 있으면 AI로 추가하세요.** 이 저장소를 fork해서 Claude Code 같은 AI 코딩 도구에 "Slack 설치 추가해 줘", "Finder에서 숨김 파일 보이게 해 줘"처럼 말하면 돼요. AI가 [AGENT.md](AGENT.md)의 규칙대로 항목을 넣고, 두 번 실행해서 확인까지 해요. 직접 고치는 방법은 [3장](#3-항목-추가하기)에 있어요.
+
 - 요구 사항: macOS 27 · Apple Silicon에서 테스트했어요(CI는 GitHub의 macos-latest). Intel 맥도 지원하지만 직접 확인하지는 않았어요.
 - 먼저 무엇을 할지만 보려면 끝에 `_ --dry-run`을 붙여요. 아무것도 바꾸지 않아요.
 
@@ -24,7 +26,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/myungjinki/initial-macbo
 실행 화면 (다 끝난 맥에서 다시 실행했을 때). 진행 중이거나 실패한 묶음만 펼쳐져요.
 
 ```
-🍎 맥 세팅 체크리스트  (23/23)
+🍎 맥 세팅 체크리스트  (22/22)
 ┌──────┬──────────┬────────────────────────────────────────
 │ 상태 │ 결과     │ 항목
 ├──────┼──────────┼────────────────────────────────────────
@@ -32,7 +34,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/myungjinki/initial-macbo
 │  ✅  │ 1/1      │ 🐚 Oh My Zsh
 │  ✅  │ 5/5      │ 🔑 SSH 키·GitHub
 │  ✅  │ 3/3      │ ⚙️  맥 설정
-│  ✅  │ 6/6      │ ⚙️  Homebrew가 있어야 하는 설정
+│  ✅  │ 5/5      │ ⚙️  Homebrew가 있어야 하는 설정
 │  ✅  │ 7/7      │ 📦 앱 설치
 └──────┴──────────┴────────────────────────────────────────
 🎉 전부 이미 됨. 할 일 없음!
@@ -44,7 +46,6 @@ curl 한 줄이면 충분해요. 입력을 미리 넣어 두고 싶을 때만 �
 
 | 옆에 둘 파일 | 만드는 법 | 없으면 |
 |---|---|---|
-| `config.sh` | `cp config.example.sh config.sh` 후 값 적기 (3장) | 이름·이메일은 맨 처음 물어보고, 저장소 클론은 ➖ 꺼져요. 끌 항목·더할 앱도 여기 적어요 |
 | `id_ed25519`, `id_ed25519.pub` | `cp ~/.ssh/id_ed25519* .` (지금 쓰는 SSH 키) | 새 키를 만들고 GitHub에 등록해요 |
 | `gh_token` | 아래 명령 | 브라우저에서 GitHub 로그인을 한 번 해요 |
 
@@ -74,7 +75,6 @@ pbpaste > gh_token && chmod 600 gh_token
    - 내장 디스플레이 해상도를 "More Space"로 변경 (해상도 자동 판별)
    - 내장 디스플레이 밝기 최대
    - git 사용자 이름·이메일 (`git config --global`)
-   - `CLONE_REPOS`의 저장소 클론 (github.com 호스트 키도 자동 등록, 비어 있으면 ➖)
    - 새 터미널에서 `brew`가 잡히도록 `~/.zprofile`에 PATH 등록
    - `git pull`할 때 rebase 대신 merge (`pull.rebase false`)
 6. 앱 설치: Google Drive, Rectangle(단축키로 창 정리), Chrome, Claude 데스크톱, ChatGPT 데스크톱, Discord, GitHub CLI(gh)
@@ -83,19 +83,9 @@ pbpaste > gh_token && chmod 600 gh_token
 - 실패한 항목은 바로 아래에 로그 마지막 5줄이 보여요. 전체 로그는 `~/Library/Logs/mac-setup.log`에 실행마다 이어서 쌓여요.
 - Homebrew가 없으면 brew가 필요한 항목(5·6번)은 ⏭️로 건너뛰어요.
 
-## 3. 내 값 (`config.sh`)
+## 3. 항목 추가하기
 
-| 값 | 의미 |
-|---|---|
-| `GIT_NAME`, `GIT_EMAIL` | `git config --global user.name`·`user.email`. 비워 두면 맨 처음 물어봐요 |
-| `CLONE_REPOS` | `"owner/저장소\|클론할 위치"`를 한 줄씩 (gh 로그인 필요). 비워 두면 ➖ 꺼져요 |
-| `DISPLAY_RES` | 'More Space' 해상도 (예: `"1800x1169"`). 비워 두면 자동 판별 |
-| `SKIP_TASKS` | 끌 항목 이름 (예: `(volume_min dock_clear discord)`). fork하지 않고 취향에 안 맞는 항목을 ➖로 꺼요 |
-| `EXTRA_CASKS` | 더 설치할 앱의 brew cask 이름 (예: `(slack visual-studio-code)`). 앱 설치 묶음 끝에 붙어요 |
-
-## 4. 항목 추가하기
-
-끄거나 앱만 더하려면 3장의 `SKIP_TASKS`·`EXTRA_CASKS`로 충분해요. 새 설정을 만들려면 이 저장소를 fork해서 `mac-setup.sh` 위쪽의 `TASKS` 목록에 한 줄씩 추가하고, 맨 위 명령의 `myungjinki`를 내 GitHub 아이디로 바꿔서 실행해요(1장처럼 받은 폴더에서 실행해도 돼요).
+항목을 끄거나 더하려면 이 저장소를 fork해서 `mac-setup.sh` 위쪽의 `TASKS` 목록에 한 줄씩 추가하고, 맨 위 명령의 `myungjinki`를 내 GitHub 아이디로 바꿔서 실행해요(1장처럼 받은 폴더에서 실행해도 돼요).
 
 | 형식 | 의미 |
 |---|---|
@@ -109,7 +99,7 @@ pbpaste > gh_token && chmod 600 gh_token
 - pkg형 앱(`brew info --cask 이름`에 `(Pkg)`)은 6번 맨 앞에 넣어요. 설치 후 뜨는 창을 일찍 볼 수 있어요.
 - `fn` 설정이 입력을 받으면 이름을 `ASKS_INPUT`에도 적어요. 오래 걸리는 설치 전에 맨 먼저 실행돼요.
 - 줄 앞에 `#`을 붙이면 그 항목은 꺼져요.
-- push하면 CI가 `shellcheck`와 macOS에서 두 번 실행하기(두 번째는 전부 "이미 됨")를 확인해요. 입력을 받는 항목은 `.github/workflows/ci.yml`의 `SKIP_TASKS`에 넣어요.
+- push하면 CI가 `shellcheck`와 macOS에서 두 번 실행하기(두 번째는 전부 "이미 됨")를 확인해요. 입력을 받는 항목은 `.github/workflows/ci.yml`의 `CI_SKIP`에 넣어요.
 
 ## 라이선스
 
