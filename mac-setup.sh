@@ -51,13 +51,13 @@ TASKS=(
   "fn:gh_login|GitHub 로그인 (브라우저)"
   "fn:ssh_key_github|SSH 키를 GitHub에 등록"
 
-  "group|⚙️  맥 설정"   # 새 설정은 이 묶음 끝에
+  "group|⚙️ 맥 설정"   # 새 설정은 이 묶음 끝에
   "fn:key_repeat|키 반복 속도 Fast · 반복 지연 Short"
   "fn:volume_min|음량 0"
   "fn:dock_clear|Dock 기본 앱 전부 빼기 (Finder·휴지통은 남음)"
   # "fn:finder_hidden|Finder 숨김 파일 보이기"
 
-  "group:brew|⚙️  Homebrew가 있어야 하는 설정"   # brightness·git은 Xcode 도구 사용
+  "group:brew|⚙️ Homebrew가 있어야 하는 설정"   # brightness·git은 Xcode 도구 사용
   "fn:display_more_space|내장 디스플레이 해상도 'More Space'"
   "fn:brightness_max|내장 디스플레이 밝기 최대"
   "fn:git_user|git 사용자 이름·이메일"
@@ -266,12 +266,18 @@ gh_cmd() {
 }
 get_gh() {
   { command -v gh >/dev/null || [ -x "$GH_TMP" ]; } && return 0
-  local arch url tmp
+  local arch rel url sums zip tmp
   arch=$(uname -m); [ "$arch" = x86_64 ] && arch=amd64
-  url=$(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest | grep -o "https://[^\"]*macOS_$arch\.zip" | head -1)
-  [ -n "$url" ] || { echo "gh 다운로드 주소를 못 찾았어요"; return 1; }
+  rel=$(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest) || return 1
+  url=$(grep -o "https://[^\"]*macOS_$arch\.zip" <<< "$rel" | head -1)
+  sums=$(grep -o 'https://[^"]*_checksums\.txt' <<< "$rel" | head -1)
+  [ -n "$url" ] && [ -n "$sums" ] || { echo "gh 다운로드 주소를 못 찾았어요"; return 1; }
   tmp=$(mktemp -d) || return 1
-  curl -fsSL "$url" -o "$tmp/gh.zip" && unzip -q "$tmp/gh.zip" -d "$tmp" && mv "$tmp"/gh_*/bin/gh "$GH_TMP"
+  zip="${url##*/}"
+  curl -fsSL "$url" -o "$tmp/$zip" && curl -fsSL "$sums" -o "$tmp/sums.txt" || return 1
+  # 릴리스의 checksums.txt로 sha256 확인 (안 맞으면 실행 안 함)
+  (cd "$tmp" && grep " $zip\$" sums.txt | shasum -a 256 -c -) >/dev/null || { echo "gh 체크섬이 안 맞아요"; return 1; }
+  unzip -q "$tmp/$zip" -d "$tmp" && mv "$tmp"/gh_*/bin/gh "$GH_TMP"
 }
 
 # GitHub 로그인: 스크립트 옆의 gh_token 파일이 있으면 그걸로, 없으면 브라우저에서 코드 입력
@@ -363,11 +369,34 @@ run_task() {
   esac
 }
 
-# 체크리스트 화면 그리기 — 표: 상태 │ 결과 │ 항목 (한글 폭 계산이 어려워 결과 칸은 공백을 직접 맞춤)
+# 체크리스트 화면 그리기 — 표: 상태 │ 결과 │ 항목
 # 기본 터미널(80×24)에 들어가도록 묶음은 한 줄로 접고, 진행 중·실패가 있는 묶음만 펼침 (draw full: 전부 펼침)
-TABLE_LINE="──────┼──────────┼────────────────────────────────────────"
+# bash는 한글·이모지의 화면 폭을 몰라서 UTF-8 바이트로 판단: 4바이트·한글 등 2칸, 글자 모양 선택자(FE0E·FE0F)·ZWJ 0칸, 나머지 1칸
+fit() {  # fit 문자열 폭 → FIT(폭에 맞게 자르고 공백으로 채운 값), FIT_W(원래 폭)
+  local LC_ALL=en_US.UTF-8 s="$1" max=$2 out="" w=0 full=0 i c cw b n len
+  len=${#s}
+  for ((i = 0; i < len; i++)); do
+    c=${s:i:1}
+    LC_ALL=C; b=${#c}; printf -v n '%d' "'$c"; LC_ALL=en_US.UTF-8
+    [ "$n" -lt 0 ] && n=$((n + 256))
+    if [ "$c" = $'\xef\xb8\x8f' ] || [ "$c" = $'\xef\xb8\x8e' ] || [ "$c" = $'\xe2\x80\x8d' ]; then cw=0
+    elif [ "$b" -ge 4 ] || [ "${s:i+1:1}" = $'\xef\xb8\x8f' ] || { [ "$b" -eq 3 ] && [ "$n" -ge 227 ]; }; then cw=2
+    else cw=1; fi
+    full=$((full + cw))
+    [ $((w + cw)) -le "$max" ] && [ "$out" = "${s:0:i}" ] && { out="$out$c"; w=$((w + cw)); }
+  done
+  FIT_W=$full
+  printf -v FIT '%s%*s' "$out" $((max - w)) ""
+}
+cell() { case "${TASKS[$1]%%|*}" in group*) echo "${TASKS[$1]#*|}" ;; *) echo "  ${TASKS[$1]#*|}" ;; esac; }   # 항목 칸 글자 (항목은 들여 씀)
+# 항목 칸 폭 = 가장 긴 글자, 칸 내용은 한 번만 계산해 둠
+COL=4; CELL=()
+for i in "${!TASKS[@]}"; do fit "$(cell "$i")" 999; [ "$FIT_W" -gt "$COL" ] && COL=$FIT_W; done
+for i in "${!TASKS[@]}"; do fit "$(cell "$i")" "$COL"; CELL[i]=$FIT; done
+fit "항목" "$COL"; HEAD_CELL=$FIT
+LINE=$(printf '%*s' $((COL + 2)) "" | sed 's/ /─/g')
 draw_task() {  # 항목 한 줄 (+ 실패 로그)
-  local i=$1 icon note
+  local i=$1 icon note l
   case "${STATUS[$i]}" in
     pending) icon="⬜"; note="대기     " ;;
     running) icon="⏳"; note="진행 중  " ;;
@@ -377,9 +406,9 @@ draw_task() {  # 항목 한 줄 (+ 실패 로그)
     blocked) icon="⏭️"; note="brew 필요" ;;
     off)     icon="➖"; note="꺼짐     " ;;
   esac
-  echo "│  $icon  │ ${note}│   ${TASKS[$i]#*|}"
+  echo "│  $icon  │ ${note}│ ${CELL[i]} │"
   if [ "${STATUS[$i]}" = fail ] && [ -n "${FAILLOG[$i]:-}" ]; then
-    printf '%s\n' "${FAILLOG[$i]}" | sed 's/^/│      │          │     └ /'
+    while IFS= read -r l; do fit "    └ $l" "$COL"; echo "│      │          │ $FIT │"; done <<< "${FAILLOG[$i]}"
   fi
 }
 draw() {
@@ -390,9 +419,9 @@ draw() {
   done
   [ -n "$full" ] || clear 2>/dev/null || true
   echo "🍎 맥 세팅 체크리스트  ($done_count/$total)"
-  echo "┌${TABLE_LINE//┼/┬}"
-  echo "│ 상태 │ 결과     │ 항목"
-  echo "├$TABLE_LINE"
+  echo "┌──────┬──────────┬$LINE┐"
+  echo "│ 상태 │ 결과     │ $HEAD_CELL │"
+  echo "├──────┼──────────┼$LINE┤"
   for i in "${!TASKS[@]}"; do
     [ "${STATUS[$i]}" = group ] || continue
     # 묶음 요약: ❌ 실패 > ⏳ 진행 중 > ⬜·⏭️ 남음 > ✅ 끝
@@ -408,14 +437,14 @@ draw() {
         blocked) [ "$icon" = "✅" ] && icon="⏭️" ;;
       esac
     done
-    printf '│  %s  │ %-9s│ %s\n' "$icon" "$n_done/$n_all" "${TASKS[$i]#*|}"
+    printf '│  %s  │ %-9s│ %s │\n' "$icon" "$n_done/$n_all" "${CELL[i]}"
     [ -n "$open" ] || continue
     for ((j = i + 1; j < ${#TASKS[@]}; j++)); do
       [ "${STATUS[$j]}" = group ] && break
       draw_task "$j"
     done
   done
-  echo "└${TABLE_LINE//┼/┴}"
+  echo "└──────┴──────────┴$LINE┘"
 }
 
 # 1) 뭐가 이미 돼 있는지 먼저 확인
@@ -490,7 +519,7 @@ run_one() {
   echo "===== $task =====" >>"$LOG"
   start=$(wc -l < "$LOG")
   if [ "${2:-}" = tty ]; then
-    run_task "$task" </dev/tty 2>&1 | tee -a "$LOG" || rc=1
+    run_task "$task" </dev/tty > >(tee -a "$LOG") 2>&1 || rc=1   # 파이프가 아니라서 do_ 안에서 바꾼 값이 남음
   else
     run_task "$task" </dev/null >>"$LOG" 2>&1 || rc=1
   fi
