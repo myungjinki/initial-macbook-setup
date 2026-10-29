@@ -1,6 +1,6 @@
 ---
 name: evaluate
-description: initial-macbook-setup 폴더 전체(mac-setup.sh, config.example.sh, README.md, AGENT.md, CLAUDE.md, .claude 설정)를 10점 만점으로 채점하고 개선 계획을 세운다. "평가", "점수", "evaluate", 항목 추가 후 점검 때 사용.
+description: initial-macbook-setup 폴더 전체(mac-setup.sh, config.example.sh, README.md, AGENT.md, CLAUDE.md, .claude 설정)를 "GitHub 스타를 받을 만한가·돈 받고 팔 만한가" 기준으로 10점 만점 엄격하게 채점하고 개선 계획을 세운다. "평가", "점수", "evaluate", 항목 추가 후 점검 때 사용.
 effort: xhigh
 ---
 
@@ -10,17 +10,25 @@ effort: xhigh
 `id_ed25519`와 `gh_token`은 열지 않는다.
 
 ## 1. 읽기
-`ls -la`로 폴더 구조를 보고 `mac-setup.sh`(나뉘었으면 관련 스크립트 전부), `config.example.sh`, `README.md`, `AGENT.md`, `CLAUDE.md`, `LICENSE`, `.claude/` 아래 파일을 읽는다. 개인 값(이름·이메일·저장소)이 원본에 하드코딩돼 있지 않은지도 본다. `bash -n`으로 문법도 확인한다.
+`ls -la`로 폴더 구조를 보고 `mac-setup.sh`(나뉘었으면 관련 스크립트 전부), `config.example.sh`, `README.md`, `AGENT.md`, `CLAUDE.md`, `LICENSE`, `.github/workflows/`, `.claude/` 아래 파일을 읽는다. 개인 값(이름·이메일·저장소)이 저장소 파일에 하드코딩돼 있지 않은지도 본다.
 
-## 2. 채점 (각 10점)
+## 1-1. 객관 점검 (결과를 점수 근거에 그대로 쓴다)
+- `bash -n mac-setup.sh && shellcheck -x mac-setup.sh config.example.sh`: 경고 0개여야 한다.
+- `bash mac-setup.sh | wc -l`: 기본 화면이 24줄 이하인지 본다(80×24 기본 터미널, `--dry-run`은 전부 펼치므로 제외).
+- README 2장 대조: `TASKS`의 묶음별 항목 수와 README 2장 항목 수가 같은지, `cask:`·`formula:`의 보일 이름이 README에 모두 있는지 센다.
+- `.github/workflows/ci.yml`의 `SKIP_TASKS`에 `ASKS_INPUT` 항목이 모두 들어 있는지 본다.
+
+## 2. 채점 (각 10점, 빡빡하게)
+
+비교 대상은 스타를 많이 받은 맥 세팅·dotfiles 저장소와 돈 받고 파는 도구다. 감점 근거를 먼저 찾고, 그런 저장소보다 나은 근거가 없으면 9~10점을 주지 않는다. 7점이 "쓸 만함", 5점이 "나만 씀"이다.
 
 | 대상 | 기준 |
 |---|---|
-| 폴더 구조 | 파일 역할이 분명한가, 불필요하거나 중복된 파일이 없는가, 나눌지 합칠지가 적절한가 |
-| 스크립트 | 사용자 입력이 전부 맨 처음에 있는가 · 다시 실행해도 안전한가(check/do) · 실패 처리와 로그 · sudo가 꼭 필요할 때만 쓰이는가 · 항목 추가가 쉬운가 |
-| README.md | 가독성 최우선: 첫 화면에서 할 일이 보이는가, 단계가 짧은가, 명령을 복사해서 바로 쓸 수 있는가, 실제 스크립트와 맞는가 |
-| AGENT.md·CLAUDE.md | 컨텍스트가 적은가, 중복과 설명조 문장, 지난 이력이 없는가, 실행 가능한 규칙만 있는가, 스킬과 내용이 겹치지 않는가 |
-| .claude 설정 | 필요한 것만 있는가, 설명(description)이 언제 쓰는지를 분명히 말하는가 |
+| 폴더 구조 | 파일 역할이 분명한가, 불필요하거나 중복된 파일이 없는가, 나눌지 합칠지가 적절한가 · CI(shellcheck·실행 테스트)와 데모 이미지처럼 스타 받는 저장소가 갖춘 것이 있는가 |
+| 스크립트 | 사용자 입력이 전부 맨 처음에 있는가 · 다시 실행해도 안전한가(check/do) · 실패 처리와 로그(실행 기록이 남는가) · sudo가 꼭 필요할 때만 쓰이는가 · 항목 추가가 쉬운가 · 기본 터미널 창(80×24)에서 화면이 넘치지 않는가 · `--help`·`--dry-run`처럼 실행 전에 확인할 방법이 있는가 · 남이 fork 없이 자기 취향대로 쓸 수 있는가 · 내려받는 파일을 검증하는가 |
+| README.md | 가독성 최우선: 첫 화면에서 할 일이 보이는가, 단계가 짧은가, 명령을 복사해서 바로 쓸 수 있는가, 실제 스크립트와 맞는가 · 실행 화면 이미지, 요구 사항(macOS 버전·칩), 다른 도구와 다른 점이 있는가 · 처음 본 사람이 30초 안에 믿고 실행할 수 있는가 |
+| AGENT.md·CLAUDE.md | 컨텍스트가 적은가, 중복과 설명조 문장, 지난 이력이 없는가, 실행 가능한 규칙만 있는가, 스킬과 내용이 겹치지 않는가 · 검증 절차가 이미 세팅된 맥뿐 아니라 새 맥 경로(`do_`)까지 확인하는가 |
+| .claude 설정 | 필요한 것만 있는가, 설명(description)이 언제 쓰는지를 분명히 말하는가 · 채점 기준이 객관적으로 확인할 수 있는가 |
 
 점수마다 근거를 한 줄씩 단다(파일:줄).
 

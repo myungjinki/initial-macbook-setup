@@ -3,12 +3,26 @@
 # 실행: bash -c "$(curl -fsSL https://raw.githubusercontent.com/myungjinki/initial-macbook-setup/main/mac-setup.sh)"
 #   또는 받은 폴더에서: bash mac-setup.sh
 set -uo pipefail
-# 키·토큰·config.sh를 찾는 폴더: 파일로 실행하면 스크립트 옆, curl로 실행하면 iCloud 문서 폴더
-if [ -f "${BASH_SOURCE[0]:-}" ]; then
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-else
-  SCRIPT_DIR="$HOME/Documents/initial-macbook-setup"
-fi
+usage() {
+  cat <<'EOF'
+사용법: bash mac-setup.sh [옵션]
+  (옵션 없음)     할 일을 확인하고 남은 것만 실행
+  -n, --dry-run   아무것도 바꾸지 않고 할 일만 표로 보여 줌
+  -h, --help      이 도움말
+curl로 실행할 때 옵션: bash -c "$(curl -fsSL …/mac-setup.sh)" _ --dry-run
+EOF
+}
+DRY_RUN=0
+case "${1:-}" in
+  "") ;;
+  -n|--dry-run) DRY_RUN=1 ;;
+  -h|--help) usage; exit 0 ;;
+  *) echo "알 수 없는 옵션: $1" >&2; usage >&2; exit 1 ;;
+esac
+# 파일로 실행하면 스크립트 옆의 config.sh·키·토큰을 읽음. curl로 실행하면 묻거나 새로 만듦
+SCRIPT_DIR=""
+[ -f "${BASH_SOURCE[0]:-}" ] && SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+beside() { [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/$1" ]; }   # 스크립트 옆에 이 파일이 있는지
 
 # ============================================================
 #  📋 할 일 목록 — 여기에 한 줄씩 추가하면 끝!
@@ -21,8 +35,8 @@ fi
 #    group:brew|제목 → 이 묶음의 fn은 Homebrew가 있어야 함 (없으면 건너뜀)
 #    fn:이름       → 직접 만든 설정 (아래 '설정 함수' 참고)
 #
-#  내 값(git 이름·이메일, 클론할 저장소)은 옆의 config.sh에 적어요
-#  (config.example.sh를 복사해서 만듦, 없으면 맨 처음 물어보거나 그 항목은 꺼짐)
+#  내 값(git 이름·이메일, 클론할 저장소)은 파일로 실행할 때 옆의 config.sh에 적어요
+#  (형식은 config.example.sh, 없으면 이름·이메일은 맨 처음 물어보고 클론은 꺼짐)
 #
 #  앞에 # 을 붙이면 꺼짐, 지우면 켜짐
 # ============================================================
@@ -34,10 +48,10 @@ TASKS=(
   "fn:oh_my_zsh|Oh My Zsh"
 
   "group|🔑 SSH 키·GitHub"   # 입력은 여기서 맨 먼저 받음 (ASKS_INPUT)
-  "fn:ssh_key|SSH 키 (이 폴더에서 복사, 없으면 새로 만들기)"
+  "fn:ssh_key|SSH 키 (없으면 새로 만들기)"
   "fn:ssh_config|~/.ssh/config에 키체인 사용 설정"
   "fn:ssh_keychain|SSH 키 암호를 키체인에 저장 (처음 한 번 입력)"
-  "fn:gh_login|GitHub 로그인 (gh_token 파일, 없으면 브라우저)"
+  "fn:gh_login|GitHub 로그인 (브라우저)"
   "fn:ssh_key_github|SSH 키를 GitHub에 등록"
 
   "group|⚙️  맥 설정"   # 새 설정은 이 묶음 끝에
@@ -73,7 +87,12 @@ GIT_NAME=""
 GIT_EMAIL=""
 CLONE_REPOS=()   # "owner/저장소|클론할 위치"
 DISPLAY_RES=""   # 내장 디스플레이 'More Space' 해상도. 비워 두면 자동 판별
-[ -f "$SCRIPT_DIR/config.sh" ] && . "$SCRIPT_DIR/config.sh"
+SKIP_TASKS=()    # 끌 항목 이름 (예: volume_min discord)
+EXTRA_CASKS=()   # 더 설치할 앱 (brew cask 이름)
+# shellcheck source=config.example.sh
+beside config.sh && . "$SCRIPT_DIR/config.sh"
+for c in "${EXTRA_CASKS[@]+"${EXTRA_CASKS[@]}"}"; do TASKS+=("cask:$c|$c"); done   # 앱 설치 묶음 끝에 붙음
+skipped() { [[ " ${SKIP_TASKS[*]+"${SKIP_TASKS[*]}"} " == *" ${1#*:} "* ]]; }   # 예: skipped fn:volume_min
 
 # ============================================================
 #  ⚙️ 설정 함수 — fn:이름 을 쓰려면 두 개를 만들어요
@@ -90,7 +109,7 @@ check_ssh_key() { [ -f "$HOME/.ssh/id_ed25519" ] && [ -f "$HOME/.ssh/id_ed25519.
 do_ssh_key() {
   local f k="$HOME/.ssh/id_ed25519"
   mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh" || return 1
-  if [ -f "$SCRIPT_DIR/id_ed25519" ] && [ -f "$SCRIPT_DIR/id_ed25519.pub" ]; then
+  if beside id_ed25519 && beside id_ed25519.pub; then
     for f in id_ed25519 id_ed25519.pub; do
       [ -f "$HOME/.ssh/$f" ] || cp "$SCRIPT_DIR/$f" "$HOME/.ssh/$f" || return 1
     done
@@ -276,7 +295,7 @@ check_gh_login() { gh_cmd auth status -h github.com >/dev/null 2>&1; }
 do_gh_login() {
   local t="$SCRIPT_DIR/gh_token"
   get_gh || return 1
-  if [ -s "$t" ]; then
+  if beside gh_token && [ -s "$t" ]; then
     chmod 600 "$t" && tr -d '[:space:]' < "$t" | gh_cmd auth login -h github.com --git-protocol ssh --with-token || return 1
   else
     echo "🌐 브라우저가 열리면 코드를 붙여 넣고(클립보드에 복사돼 있음) 승인해 주세요"
@@ -322,8 +341,7 @@ do_brew_path()    { echo "eval \"\$($(command -v brew) shellenv)\"" >> "$HOME/.z
 # ============================================================
 #  아래는 엔진 부분 — 보통은 건드릴 필요 없어요
 # ============================================================
-LOG="$HOME/mac-setup.log"
-: > "$LOG"
+LOG="$HOME/Library/Logs/mac-setup.log"   # 실행마다 이어 씀 (5000줄 넘으면 뒤 3000줄만 남김)
 STATUS=()
 IN_BREW_GROUP=()
 FAILLOG=()
@@ -379,34 +397,59 @@ run_task() {
   esac
 }
 
-# 체크리스트 화면 그리기
+# 체크리스트 화면 그리기 — 표: 상태 │ 결과 │ 항목 (한글 폭 계산이 어려워 결과 칸은 공백을 직접 맞춤)
+# 기본 터미널(80×24)에 들어가도록 묶음은 한 줄로 접고, 진행 중·실패가 있는 묶음만 펼침 (draw full: 전부 펼침)
+TABLE_LINE="──────┼──────────┼────────────────────────────────────────"
+draw_task() {  # 항목 한 줄 (+ 실패 로그)
+  local i=$1 icon note
+  case "${STATUS[$i]}" in
+    pending) icon="⬜"; note="대기     " ;;
+    running) icon="⏳"; note="진행 중  " ;;
+    done)    icon="✅"; note="완료     " ;;
+    skip)    icon="✅"; note="이미 됨  " ;;
+    fail)    icon="❌"; note="실패     " ;;
+    blocked) icon="⏭️"; note="brew 필요" ;;
+    off)     icon="➖"; note="꺼짐     " ;;
+  esac
+  echo "│  $icon  │ $note│   ${TASKS[$i]#*|}"
+  if [ "${STATUS[$i]}" = fail ] && [ -n "${FAILLOG[$i]:-}" ]; then
+    printf '%s\n' "${FAILLOG[$i]}" | sed 's/^/│      │          │     └ /'
+  fi
+}
 draw() {
-  local i label icon note done_count=0 total=0
+  local full="${1:-}" i j icon open n_done n_all done_count=0 total=0
   for i in "${!TASKS[@]}"; do
     [ "${STATUS[$i]}" = group ] || total=$((total + 1))
     case "${STATUS[$i]}" in done|skip|off) done_count=$((done_count + 1)) ;; esac
   done
-  clear 2>/dev/null || true
+  [ -n "$full" ] || clear 2>/dev/null || true
   echo "🍎 맥 세팅 체크리스트  ($done_count/$total)"
-  echo "────────────────────────────────────"
+  echo "┌${TABLE_LINE//┼/┬}"
+  echo "│ 상태 │ 결과     │ 항목"
+  echo "├$TABLE_LINE"
   for i in "${!TASKS[@]}"; do
-    label="${TASKS[$i]#*|}"
-    if [ "${STATUS[$i]}" = group ]; then echo; echo " $label"; continue; fi
-    case "${STATUS[$i]}" in
-      pending) icon="⬜"; note="" ;;
-      running) icon="⏳"; note=" — 진행 중..." ;;
-      done)    icon="✅"; note=" — 완료" ;;
-      skip)    icon="✅"; note=" — 이미 됨" ;;
-      fail)    icon="❌"; note=" — 실패" ;;
-      blocked) icon="⏭️"; note=" — 건너뜀 (Homebrew 필요)" ;;
-      off)     icon="➖"; note=" — 꺼짐 (값·파일 없음)" ;;
-    esac
-    echo "  $icon $label$note"
-    if [ "${STATUS[$i]}" = fail ] && [ -n "${FAILLOG[$i]:-}" ]; then
-      printf '%s\n' "${FAILLOG[$i]}" | sed 's/^/        │ /'
-    fi
+    [ "${STATUS[$i]}" = group ] || continue
+    # 묶음 요약: ❌ 실패 > ⏳ 진행 중 > ⬜·⏭️ 남음 > ✅ 끝
+    icon="✅"; open="$full"; n_done=0; n_all=0
+    for ((j = i + 1; j < ${#TASKS[@]}; j++)); do
+      [ "${STATUS[$j]}" = group ] && break
+      n_all=$((n_all + 1))
+      case "${STATUS[$j]}" in
+        done|skip|off) n_done=$((n_done + 1)) ;;
+        fail)    icon="❌"; open=1 ;;
+        running) [ "$icon" = "❌" ] || icon="⏳"; open=1 ;;
+        pending) [ "$icon" = "✅" ] && icon="⬜" ;;
+        blocked) [ "$icon" = "✅" ] && icon="⏭️" ;;
+      esac
+    done
+    printf '│  %s  │ %-9s│ %s\n' "$icon" "$n_done/$n_all" "${TASKS[$i]#*|}"
+    [ -n "$open" ] || continue
+    for ((j = i + 1; j < ${#TASKS[@]}; j++)); do
+      [ "${STATUS[$j]}" = group ] && break
+      draw_task "$j"
+    done
   done
-  echo "────────────────────────────────────"
+  echo "└${TABLE_LINE//┼/┴}"
 }
 
 # 1) 뭐가 이미 돼 있는지 먼저 확인
@@ -414,28 +457,37 @@ need_work=0
 brew_group=0
 for i in "${!TASKS[@]}"; do
   case "${TASKS[$i]%%|*}" in
-    group:brew) STATUS[$i]=group; brew_group=1; continue ;;
-    group*)     STATUS[$i]=group; brew_group=0; continue ;;
+    group:brew) STATUS[i]=group; brew_group=1; continue ;;
+    group*)     STATUS[i]=group; brew_group=0; continue ;;
   esac
-  IN_BREW_GROUP[$i]=$brew_group
+  IN_BREW_GROUP[i]=$brew_group
   task="${TASKS[$i]%%|*}"
-  if run_hook off "$task" >/dev/null 2>&1; then
-    STATUS[$i]=off
+  if skipped "$task" || run_hook off "$task" >/dev/null 2>&1; then
+    STATUS[i]=off
   elif is_done "${TASKS[$i]%%|*}"; then
-    STATUS[$i]=skip
+    STATUS[i]=skip
   else
-    STATUS[$i]=pending
+    STATUS[i]=pending
     need_work=1
   fi
 done
 
+# 2) 할 일이 없거나 --dry-run이면 아무것도 바꾸지 않고 끝
+if [ "$DRY_RUN" -eq 1 ]; then
+  draw full
+  echo "🔍 --dry-run: 아무것도 바꾸지 않았어요. ⬜ 항목이 실행할 일이에요."
+  exit 0
+fi
 draw
-
-# 2) 할 일이 없으면 비밀번호 없이 바로 끝
 if [ "$need_work" -eq 0 ]; then
   echo "🎉 전부 이미 됨. 할 일 없음!"
   exit 0
 fi
+mkdir -p "$(dirname "$LOG")"
+if [ -f "$LOG" ] && [ "$(wc -l < "$LOG")" -gt 5000 ]; then
+  tail -n 3000 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+fi
+echo "##### $(date '+%Y-%m-%d %H:%M:%S') 실행 #####" >> "$LOG"
 
 # 3) 값을 물어볼 항목(ask_이름)이 남아 있으면 지금 물어봄
 for i in "${!TASKS[@]}"; do
@@ -464,9 +516,9 @@ fi
 run_one() {
   local i=$1 task="${TASKS[$1]%%|*}" start rc=0
   if needs_brew "$i" && ! command -v brew >/dev/null; then
-    STATUS[$i]=blocked; return
+    STATUS[i]=blocked; return
   fi
-  STATUS[$i]=running
+  STATUS[i]=running
   draw
   echo "   자세한 진행 상황: tail -f $LOG"
   echo "===== $task =====" >>"$LOG"
@@ -477,10 +529,10 @@ run_one() {
     run_task "$task" </dev/null >>"$LOG" 2>&1 || rc=1
   fi
   if [ "$rc" -eq 0 ]; then
-    STATUS[$i]=done
+    STATUS[i]="done"
   else
-    STATUS[$i]=fail
-    FAILLOG[$i]=$(tail -n +$((start + 1)) "$LOG" | tail -n 5)  # 이 항목의 로그만
+    STATUS[i]=fail
+    FAILLOG[i]=$(tail -n +$((start + 1)) "$LOG" | tail -n 5)  # 이 항목의 로그만
   fi
 }
 
