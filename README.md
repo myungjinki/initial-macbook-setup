@@ -1,45 +1,33 @@
 # 🍎 Initial MacBook Setup
 
-포맷·초기 설정·와이파이·iCloud 로그인까지 했다면, 남은 건 스크립트 실행 하나예요. 👍
-
-## 0. 처음 한 번 준비하기 (지금 쓰는 맥에서)
-
-1. 이 저장소를 iCloud가 동기화하는 문서 폴더에 받아요. 새 맥에서는 iCloud로 같은 폴더가 내려와요.
+포맷한 맥에서 **터미널**을 열고 이 한 줄을 붙여 넣으면 끝이에요. 미리 준비할 건 없어요. 👍
 
 ```bash
-git clone https://github.com/myungjinki/initial-macbook-setup.git ~/Documents/initial-macbook-setup
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/myungjinki/initial-macbook-setup/main/mac-setup.sh)"
 ```
 
-2. 끝이에요. 나머지는 새 맥에서 물어보거나 새로 만들어요.
-
-아래는 **선택**이에요. 같은 폴더에 넣어 두면 그걸 써서 입력이 줄어요. 이 파일들은 git에 올라가지 않아요.
-
-| 넣어 둘 파일 | 없으면 |
-|---|---|
-| `config.sh` — git 이름·이메일, 클론할 저장소 (`cp config.example.sh config.sh`) | 이름·이메일을 맨 처음 물어봐요 |
-| `id_ed25519`, `id_ed25519.pub` — 지금 쓰는 SSH 키 (`cp ~/.ssh/id_ed25519* ~/Documents/initial-macbook-setup/`) | 새 키를 만들고 GitHub에 등록해요 |
-| `gh_token` — GitHub 토큰 (5장) | 브라우저에서 GitHub 로그인을 한 번 해요 |
-
-설치할 앱과 설정은 `mac-setup.sh` 위쪽 `TASKS`에서 고쳐요 (4장).
-
-## 1. 실행하기 (새 맥에서)
-
-1. **시스템 설정 → Apple 계정 → iCloud → iCloud Drive**에서 **"데스크탑 및 문서 폴더"**를 켜요.
-2. Finder에 `문서/initial-macbook-setup`이 보일 때까지 기다려요.
-3. 터미널에서 실행해요.
-
-```bash
-bash ~/Documents/initial-macbook-setup/mac-setup.sh
-```
-
-- "터미널이 문서 폴더에 접근하려고 합니다"라는 창이 뜨면 **허용**을 눌러요.
-- 입력은 맨 처음에만 해요. 이후는 자동으로 진행돼요. (위 파일이 있으면 그 입력은 건너뜀)
+- 입력은 맨 처음에만 해요. 그다음은 자동으로 진행돼요.
   - `git 이름`·`git 이메일`
   - 비밀번호를 물으면 **관리자 비밀번호**
-  - 새 SSH 키를 만들 때 **키 암호 정하기** (두 번), `Enter passphrase`가 나오면 **SSH 키 암호** (키체인에 저장돼서 다시 안 물음)
+  - 새 SSH 키의 **키 암호 정하기** (두 번), `Enter passphrase`가 나오면 그 **키 암호** 한 번 더 (키체인에 저장돼서 다시 안 물음)
   - 브라우저가 열리면 **GitHub 로그인**: 클립보드에 복사된 코드를 붙여 넣고 승인
 - 처음 실행할 때 Homebrew가 Xcode Command Line Tools도 같이 설치해서 10분 넘게 걸릴 수 있어요.
 - 끝나면 새 터미널 창을 열어요. 그래야 `brew` 명령이 잡혀요.
+- 몇 번을 다시 실행해도 안전해요. 실행 전에 내용을 보고 싶으면 [mac-setup.sh](mac-setup.sh)를 열어 보세요.
+
+## 1. 입력 줄이기 (선택, 포맷 전에)
+
+iCloud 문서 폴더에 `initial-macbook-setup` 폴더를 만들고 아래 파일을 넣어 두면, 새 맥에서 그 입력은 건너뛰어요. 새 맥에서는 **시스템 설정 → Apple 계정 → iCloud → iCloud Drive → "데스크탑 및 문서 폴더"**를 켜고, Finder에 폴더가 보인 뒤에 실행해요. ("터미널이 문서 폴더에 접근하려고 합니다" 창이 뜨면 **허용**)
+
+```bash
+mkdir -p ~/Documents/initial-macbook-setup && cd ~/Documents/initial-macbook-setup
+```
+
+| 넣어 둘 파일 | 만드는 법 | 없으면 |
+|---|---|---|
+| `config.sh` | `curl -fsSL https://raw.githubusercontent.com/myungjinki/initial-macbook-setup/main/config.example.sh -o config.sh` 후 값 적기 (3장) | 이름·이메일을 맨 처음 물어봐요 |
+| `id_ed25519`, `id_ed25519.pub` | `cp ~/.ssh/id_ed25519* .` (지금 쓰는 SSH 키) | 새 키를 만들고 GitHub에 등록해요 |
+| `gh_token` | 5장 | 브라우저에서 GitHub 로그인을 한 번 해요 |
 
 ## 2. 스크립트가 해 주는 것
 
@@ -48,10 +36,10 @@ bash ~/Documents/initial-macbook-setup/mac-setup.sh
 1. Homebrew 설치
 2. Oh My Zsh 설치 (brew 패키지가 없어 공식 스크립트로 설치, `~/.zshrc`가 없으면 기본 템플릿 생성)
 3. SSH 키·GitHub
-   - 이 폴더의 SSH 키(`id_ed25519`, `id_ed25519.pub`)를 `~/.ssh`로 복사, 없으면 새로 만들기 (권한 600/644)
+   - 1장 폴더의 SSH 키(`id_ed25519`, `id_ed25519.pub`)를 `~/.ssh`로 복사, 없으면 새로 만들기 (권한 600/644)
    - `~/.ssh/config`에 `UseKeychain yes`·`AddKeysToAgent yes` 추가
    - SSH 키 암호를 키체인에 저장 (맨 처음에 한 번 입력, 재부팅해도 다시 안 물음)
-   - GitHub 로그인: 이 폴더의 `gh_token`으로, 없으면 브라우저로 (git은 SSH 방식, Homebrew 전이라 gh를 임시로 받아 씀)
+   - GitHub 로그인: 1장 폴더의 `gh_token`으로, 없으면 브라우저로 (git은 SSH 방식, Homebrew 전이라 gh를 임시로 받아 씀)
    - SSH 키를 GitHub에 등록 (이미 있으면 건너뜀)
 4. 맥 설정
    - 키보드 키 반복 속도 Fast, 반복 지연 Short (로그아웃 후 적용)
@@ -80,7 +68,7 @@ bash ~/Documents/initial-macbook-setup/mac-setup.sh
 
 ## 4. 항목 추가하기
 
-`mac-setup.sh` 위쪽의 `TASKS` 목록에 한 줄씩 추가하면 돼요.
+이 저장소를 fork해서 `mac-setup.sh` 위쪽의 `TASKS` 목록에 한 줄씩 추가하고, 맨 위 명령의 `myungjinki`를 내 GitHub 아이디로 바꿔서 실행해요. 받은 폴더에서 `bash mac-setup.sh`로 실행해도 돼요(그때는 키·토큰·`config.sh`를 스크립트 옆에서 찾아요).
 
 | 형식 | 의미 |
 |---|---|
@@ -97,7 +85,7 @@ bash ~/Documents/initial-macbook-setup/mac-setup.sh
 
 ## 5. GitHub 토큰 만들기 (선택)
 
-토큰이 없어도 브라우저로 로그인할 수 있어요. 브라우저 단계를 건너뛰고 싶을 때만 만들어요. `gh_token`이 만료되면 GitHub 로그인 항목이 ❌로 나와요. **GitHub → Settings → Developer settings → Personal access tokens**에서 `repo`, `read:org`, `admin:public_key` 권한으로 토큰을 만들고 이 폴더에 저장해요(만료 기간을 두는 게 안전해요).
+토큰이 없어도 브라우저로 로그인할 수 있어요. 브라우저 단계를 건너뛰고 싶을 때만 만들어요. `gh_token`이 만료되면 GitHub 로그인 항목이 ❌로 나와요. **GitHub → Settings → Developer settings → Personal access tokens**에서 `repo`, `read:org`, `admin:public_key` 권한으로 토큰을 만들고 1장 폴더에 저장해요(만료 기간을 두는 게 안전해요).
 
 ```bash
 pbpaste > ~/Documents/initial-macbook-setup/gh_token && chmod 600 ~/Documents/initial-macbook-setup/gh_token

@@ -1,8 +1,14 @@
 #!/bin/bash
 # 🍎 맥 초기 세팅 스크립트
-# 실행: bash ~/Documents/initial-macbook-setup/mac-setup.sh
+# 실행: bash -c "$(curl -fsSL https://raw.githubusercontent.com/myungjinki/initial-macbook-setup/main/mac-setup.sh)"
+#   또는 받은 폴더에서: bash mac-setup.sh
 set -uo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# 키·토큰·config.sh를 찾는 폴더: 파일로 실행하면 스크립트 옆, curl로 실행하면 iCloud 문서 폴더
+if [ -f "${BASH_SOURCE[0]:-}" ]; then
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+  SCRIPT_DIR="$HOME/Documents/initial-macbook-setup"
+fi
 
 # ============================================================
 #  📋 할 일 목록 — 여기에 한 줄씩 추가하면 끝!
