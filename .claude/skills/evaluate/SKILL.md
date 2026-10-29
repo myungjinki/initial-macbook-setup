@@ -1,6 +1,6 @@
 ---
 name: evaluate
-description: initial-setup-macbook 폴더 전체(mac-setup.sh, config.example.sh, README.md, AGENT.md, CLAUDE.md, .claude 설정)를 10점 만점으로 채점하고 개선 계획을 세운다. "평가", "점수", "evaluate", 항목 추가 후 점검 때 사용.
+description: initial-macbook-setup 폴더 전체(mac-setup.sh, config.example.sh, README.md, AGENT.md, CLAUDE.md, .claude 설정)를 10점 만점으로 채점하고 개선 계획을 세운다. "평가", "점수", "evaluate", 항목 추가 후 점검 때 사용.
 effort: xhigh
 ---
 

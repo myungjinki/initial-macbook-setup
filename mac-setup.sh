@@ -1,6 +1,6 @@
 #!/bin/bash
 # 🍎 맥 초기 세팅 스크립트
-# 실행: bash ~/Documents/initial-setup-macbook/mac-setup.sh
+# 실행: bash ~/Documents/initial-macbook-setup/mac-setup.sh
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -16,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #    fn:이름       → 직접 만든 설정 (아래 '설정 함수' 참고)
 #
 #  내 값(git 이름·이메일, 클론할 저장소)은 옆의 config.sh에 적어요
-#  (config.example.sh를 복사해서 만듦, 없으면 그 항목은 꺼짐)
+#  (config.example.sh를 복사해서 만듦, 없으면 맨 처음 물어보거나 그 항목은 꺼짐)
 #
 #  앞에 # 을 붙이면 꺼짐, 지우면 켜짐
 # ============================================================
@@ -27,10 +27,12 @@ TASKS=(
   "group|🐚 Oh My Zsh"   # brew가 아닌 공식 스크립트로 설치
   "fn:oh_my_zsh|Oh My Zsh"
 
-  "group|🔑 SSH 키"
-  "fn:ssh_key|SSH 키를 ~/.ssh로 복사"
+  "group|🔑 SSH 키·GitHub"   # 입력은 여기서 맨 먼저 받음 (ASKS_INPUT)
+  "fn:ssh_key|SSH 키 (이 폴더에서 복사, 없으면 새로 만들기)"
   "fn:ssh_config|~/.ssh/config에 키체인 사용 설정"
-  "fn:ssh_keychain|SSH 키 암호를 키체인에 저장 (처음 한 번 입력)"   # ASKS_INPUT
+  "fn:ssh_keychain|SSH 키 암호를 키체인에 저장 (처음 한 번 입력)"
+  "fn:gh_login|GitHub 로그인 (gh_token 파일, 없으면 브라우저)"
+  "fn:ssh_key_github|SSH 키를 GitHub에 등록"
 
   "group|⚙️  맥 설정"   # 새 설정은 이 묶음 끝에
   "fn:key_repeat|키 반복 속도 Fast · 반복 지연 Short"
@@ -42,7 +44,6 @@ TASKS=(
   "fn:display_more_space|내장 디스플레이 해상도 'More Space'"
   "fn:brightness_max|내장 디스플레이 밝기 최대"
   "fn:git_user|git 사용자 이름·이메일"
-  "fn:gh_login|GitHub CLI(gh) 설치·로그인 (gh_token 파일)"
   "fn:clone_repos|config.sh의 저장소 클론 (CLONE_REPOS)"
   "fn:brew_path|새 터미널에서 brew 쓰기 (~/.zprofile)"
   "fn:git_pull_merge|git pull은 merge로 (pull.rebase false)"
@@ -54,11 +55,12 @@ TASKS=(
   "cask:claude|Claude 데스크톱"
   "cask:chatgpt|ChatGPT 데스크톱"
   "cask:discord|Discord"
+  "formula:gh|GitHub CLI (gh)"
   # "formula:git|Git"
 )
 
 # 이 fn 항목들은 입력을 받아요 — 오래 걸리는 설치 전에 맨 먼저 실행
-ASKS_INPUT="ssh_keychain"
+ASKS_INPUT="ssh_key ssh_keychain gh_login"
 
 # 내 값 — config.sh에서 덮어씀 (형식은 config.example.sh)
 GIT_NAME=""
@@ -72,23 +74,25 @@ DISPLAY_RES=""   # 내장 디스플레이 'More Space' 해상도. 비워 두면 
 #    check_이름 : 이미 돼 있는지 확인 (돼 있으면 건너뜀)
 #    do_이름    : 실제로 설정하는 명령
 #    off_이름   : (선택) 성공하면 이 항목은 꺼짐 — 값이나 파일이 없을 때
+#    ask_이름   : (선택) 할 일이 남았으면 맨 처음 값을 물어봄 (do_보다 먼저, 같은 셸)
 # ============================================================
 # Xcode 도구(git·swift)가 있는지. 없을 때 git·swift를 부르면 설치 팝업이 뜸
 has_xcode() { xcode-select -p >/dev/null 2>&1; }
 
-# SSH 키: 스크립트 옆의 id_ed25519(.pub)를 ~/.ssh로 복사 (이미 있으면 건너뜀)
-# 키가 어디에도 없으면 SSH 항목은 꺼짐
-no_ssh_key() { [ ! -f "$SCRIPT_DIR/id_ed25519" ] && [ ! -f "$HOME/.ssh/id_ed25519" ]; }
-off_ssh_key() { no_ssh_key; }
+# SSH 키: 스크립트 옆의 id_ed25519(.pub)를 ~/.ssh로 복사, 없으면 새로 만듦 (암호는 직접 정함)
 check_ssh_key() { [ -f "$HOME/.ssh/id_ed25519" ] && [ -f "$HOME/.ssh/id_ed25519.pub" ]; }
 do_ssh_key() {
-  local f
+  local f k="$HOME/.ssh/id_ed25519"
   mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh" || return 1
-  for f in id_ed25519 id_ed25519.pub; do
-    [ -f "$SCRIPT_DIR/$f" ] || { echo "$SCRIPT_DIR/$f 이 없어요"; return 1; }
-    [ -f "$HOME/.ssh/$f" ] || cp "$SCRIPT_DIR/$f" "$HOME/.ssh/$f" || return 1
-  done
-  chmod 600 "$HOME/.ssh/id_ed25519" && chmod 644 "$HOME/.ssh/id_ed25519.pub"
+  if [ -f "$SCRIPT_DIR/id_ed25519" ] && [ -f "$SCRIPT_DIR/id_ed25519.pub" ]; then
+    for f in id_ed25519 id_ed25519.pub; do
+      [ -f "$HOME/.ssh/$f" ] || cp "$SCRIPT_DIR/$f" "$HOME/.ssh/$f" || return 1
+    done
+  elif [ ! -f "$k" ]; then
+    echo "🔑 새 SSH 키를 만들어요. 키 암호를 정해 주세요 (두 번 입력)"
+    ssh-keygen -q -t ed25519 -C "${GIT_EMAIL:-$USER@$(scutil --get LocalHostName)}" -f "$k" || return 1
+  fi
+  chmod 600 "$k" && chmod 644 "$k.pub"
 }
 
 # SSH 키 암호를 키체인에서 꺼내 쓰도록 설정 (재부팅해도 다시 안 물음)
@@ -101,7 +105,6 @@ do_ssh_config() {
 # 암호를 키체인에 한 번 저장. 암호 없는 키면 할 일 없음
 # 키체인 항목은 security로 안 보여서 에이전트에 올라왔는지로 확인
 # (재부팅 직후엔 에이전트가 비어 '완료'로 나오지만, 키체인에서 꺼내므로 암호는 다시 안 물음)
-off_ssh_keychain() { no_ssh_key; }
 check_ssh_keychain() {
   local k="$HOME/.ssh/id_ed25519" fp
   [ -f "$k" ] && [ -f "$k.pub" ] || return 1
@@ -226,24 +229,63 @@ check_brightness_max() { has_xcode || return 1; awk -v v="$(brightness get)" 'BE
 do_brightness_max()    { brightness set 1.0; }
 
 # git 사용자 (git은 Xcode 도구에 포함, 없으면 팝업이 뜨므로 먼저 확인)
-off_git_user() { [ -z "$GIT_NAME" ] || [ -z "$GIT_EMAIL" ]; }
+# config.sh가 비어 있으면 맨 처음 물어봄 (git은 나중에 Xcode 도구가 생긴 뒤 설정)
+ask_git_user() {
+  [ -n "$GIT_NAME" ] || read -rp "📝 git 이름: " GIT_NAME </dev/tty
+  [ -n "$GIT_EMAIL" ] || read -rp "📝 git 이메일: " GIT_EMAIL </dev/tty
+}
 check_git_user() {
   has_xcode || return 1
-  [ "$(git config --global user.name)" = "$GIT_NAME" ] && [ "$(git config --global user.email)" = "$GIT_EMAIL" ]
+  if [ -n "$GIT_NAME" ]; then
+    [ "$(git config --global user.name)" = "$GIT_NAME" ] && [ "$(git config --global user.email)" = "$GIT_EMAIL" ]
+  else
+    [ -n "$(git config --global user.name)" ] && [ -n "$(git config --global user.email)" ]
+  fi
 }
-do_git_user() { git config --global user.name "$GIT_NAME" && git config --global user.email "$GIT_EMAIL"; }
+do_git_user() {
+  [ -n "$GIT_NAME" ] && [ -n "$GIT_EMAIL" ] || { echo "git 이름·이메일이 비어 있어요 (config.sh)"; return 1; }
+  git config --global user.name "$GIT_NAME" && git config --global user.email "$GIT_EMAIL"
+}
 
-# GitHub CLI 로그인: 스크립트 옆의 gh_token 파일로 로그인 (입력 없음, gh가 없으면 먼저 설치)
-off_gh_login() { [ ! -s "$SCRIPT_DIR/gh_token" ] && ! check_gh_login; }
-check_gh_login() { command -v gh >/dev/null && gh auth status -h github.com >/dev/null 2>&1; }
+# gh: brew로 깔리기 전(맨 처음 로그인할 때)은 GitHub 릴리스 zip을 임시로 받아 씀
+# 로그인 정보는 키체인에 저장돼서 나중에 brew로 깐 gh도 그대로 씀
+GH_TMP="${TMPDIR:-/tmp}/mac-setup-gh"
+gh_cmd() {
+  if command -v gh >/dev/null; then gh "$@"
+  elif [ -x "$GH_TMP" ]; then "$GH_TMP" "$@"
+  else return 127; fi
+}
+get_gh() {
+  { command -v gh >/dev/null || [ -x "$GH_TMP" ]; } && return 0
+  local arch url tmp
+  arch=$(uname -m); [ "$arch" = x86_64 ] && arch=amd64
+  url=$(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest | grep -o "https://[^\"]*macOS_$arch\.zip" | head -1)
+  [ -n "$url" ] || { echo "gh 다운로드 주소를 못 찾았어요"; return 1; }
+  tmp=$(mktemp -d) || return 1
+  curl -fsSL "$url" -o "$tmp/gh.zip" && unzip -q "$tmp/gh.zip" -d "$tmp" && mv "$tmp"/gh_*/bin/gh "$GH_TMP"
+}
+
+# GitHub 로그인: 스크립트 옆의 gh_token 파일이 있으면 그걸로, 없으면 브라우저에서 코드 입력
+check_gh_login() { gh_cmd auth status -h github.com >/dev/null 2>&1; }
 do_gh_login() {
   local t="$SCRIPT_DIR/gh_token"
-  [ -s "$t" ] || { echo "$t 이 없어요. GitHub 토큰을 이 파일에 저장해 주세요"; return 1; }
-  chmod 600 "$t" || return 1
-  command -v gh >/dev/null || brew install gh || return 1
-  tr -d '[:space:]' < "$t" | gh auth login -h github.com --git-protocol ssh --with-token || return 1
-  gh auth status -h github.com
+  get_gh || return 1
+  if [ -s "$t" ]; then
+    chmod 600 "$t" && tr -d '[:space:]' < "$t" | gh_cmd auth login -h github.com --git-protocol ssh --with-token || return 1
+  else
+    echo "🌐 브라우저가 열리면 코드를 붙여 넣고(클립보드에 복사돼 있음) 승인해 주세요"
+    open https://github.com/login/device
+    gh_cmd auth login -h github.com --git-protocol ssh --web --clipboard --skip-ssh-key -s admin:public_key </dev/null || return 1
+  fi
+  gh_cmd auth status -h github.com
 }
+
+# SSH 키를 GitHub에 등록 (이미 있으면 건너뜀, 토큰에 admin:public_key 권한 필요)
+check_ssh_key_github() {
+  local k; k=$(awk '{print $2}' "$HOME/.ssh/id_ed25519.pub" 2>/dev/null) && [ -n "$k" ] || return 1
+  gh_cmd ssh-key list 2>/dev/null | grep -qF "$k"
+}
+do_ssh_key_github() { gh_cmd ssh-key add "$HOME/.ssh/id_ed25519.pub" --title "$(scutil --get ComputerName)"; }
 
 # 저장소 클론: github.com 호스트 키가 없으면 SSH가 막히므로 GitHub API(HTTPS)로 받아 known_hosts에 추가
 repo_dir() { local d="${1#*|}"; echo "${d/#\~/$HOME}"; }   # "owner/저장소|위치" → 위치
@@ -255,11 +297,11 @@ check_clone_repos() {
 do_clone_repos() {
   local kh="$HOME/.ssh/known_hosts" r d
   if ! ssh-keygen -F github.com -f "$kh" >/dev/null 2>&1; then
-    mkdir -p "$HOME/.ssh" && gh api meta --jq '.ssh_keys[] | "github.com " + .' >> "$kh" || return 1
+    mkdir -p "$HOME/.ssh" && gh_cmd api meta --jq '.ssh_keys[] | "github.com " + .' >> "$kh" || return 1
   fi
   for r in "${CLONE_REPOS[@]}"; do
     d=$(repo_dir "$r")
-    [ -d "$d/.git" ] || { mkdir -p "$(dirname "$d")" && gh repo clone "${r%%|*}" "$d"; } || return 1
+    [ -d "$d/.git" ] || { mkdir -p "$(dirname "$d")" && gh_cmd repo clone "${r%%|*}" "$d"; } || return 1
   done
 }
 
@@ -312,6 +354,9 @@ needs_brew() {
   case "${TASKS[$1]%%|*}" in cask:*|formula:*) return 0 ;; esac
   [ "${IN_BREW_GROUP[$1]:-0}" = 1 ]
 }
+
+# fn 작업의 선택 함수(off_이름·ask_이름)가 있으면 실행 — 예: run_hook off fn:ssh_key
+run_hook() { [[ "$2" == fn:* ]] && declare -F "$1_${2#fn:}" >/dev/null && "$1_${2#fn:}"; }
 
 # 입력을 받는 작업인지
 asks_input() { [[ "$1" == fn:* && " $ASKS_INPUT " == *" ${1#fn:} "* ]]; }
@@ -368,7 +413,7 @@ for i in "${!TASKS[@]}"; do
   esac
   IN_BREW_GROUP[$i]=$brew_group
   task="${TASKS[$i]%%|*}"
-  if [[ "$task" == fn:* ]] && declare -F "off_${task#fn:}" >/dev/null && "off_${task#fn:}" >/dev/null 2>&1; then
+  if run_hook off "$task" >/dev/null 2>&1; then
     STATUS[$i]=off
   elif is_done "${TASKS[$i]%%|*}"; then
     STATUS[$i]=skip
@@ -386,7 +431,12 @@ if [ "$need_work" -eq 0 ]; then
   exit 0
 fi
 
-# 3) 비밀번호가 필요한 작업(Homebrew 설치, pkg형 앱 설치)이 남아 있을 때만 한 번
+# 3) 값을 물어볼 항목(ask_이름)이 남아 있으면 지금 물어봄
+for i in "${!TASKS[@]}"; do
+  [ "${STATUS[$i]}" = pending ] && run_hook ask "${TASKS[$i]%%|*}"
+done
+
+# 4) 비밀번호가 필요한 작업(Homebrew 설치, pkg형 앱 설치)이 남아 있을 때만 한 번
 need_sudo=0
 for i in "${!TASKS[@]}"; do
   [ "${STATUS[$i]}" = pending ] || continue
@@ -428,17 +478,17 @@ run_one() {
   fi
 }
 
-# 4) 입력을 받는 작업(ASKS_INPUT)부터 — 오래 걸리는 설치 전에 다 물어봄
+# 5) 입력을 받는 작업(ASKS_INPUT)부터 — 오래 걸리는 설치 전에 다 물어봄
 for i in "${!TASKS[@]}"; do
   [ "${STATUS[$i]}" = pending ] && asks_input "${TASKS[$i]%%|*}" && run_one "$i" tty
 done
 
-# 5) 나머지를 하나씩 실행하면서 체크
+# 6) 나머지를 하나씩 실행하면서 체크
 for i in "${!TASKS[@]}"; do
   [ "${STATUS[$i]}" = pending ] && run_one "$i"
 done
 
-# 6) 결과
+# 7) 결과
 draw
 for n in "${NOTES[@]+"${NOTES[@]}"}"; do echo "$n"; done
 failed=0

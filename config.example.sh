@@ -1,6 +1,6 @@
 # 내 값 — 이 파일을 config.sh로 복사해서 고쳐요 (config.sh는 git에 안 올라감)
 #   cp config.example.sh config.sh
-# 비워 둔 값의 항목은 체크리스트에서 ➖ 꺼짐으로 보여요
+# 비워 두면: 이름·이메일은 맨 처음 물어보고, 저장소 클론은 ➖ 꺼짐
 
 # git config --global user.name / user.email
 GIT_NAME=""
