@@ -7,7 +7,7 @@
 1. `TASKS`에 한 줄 추가한다(형식은 README 3장). `fn`이면 `check_이름`(확인만 함: sudo·변경·팝업·입력 없음)과 `do_이름`(여러 번 실행해도 안전)을 만든다. 입력을 받는 `fn`은 `ASKS_INPUT`에 넣고, 값만 물으면 `ask_이름`으로 맨 처음 묻는다.
 2. `bash -n mac-setup.sh && shellcheck -x mac-setup.sh` (경고 0개)
 3. 저장소 폴더에서 `bash mac-setup.sh`를 두 번 실행한다. 첫 번째는 `완료` 또는 `이미 됨`, 두 번째는 `이미 됨`이 나와야 한다. 새 맥 경로(`do_`)는 push 후 CI(`.github/workflows/ci.yml`)가 확인한다. 입력을 받거나 CI 맥에서 못 도는 항목은 CI의 `CI_SKIP`에 넣는다.
-4. README 2장 목록을 `TASKS`와 같은 순서로 업데이트한다.
+4. README 2장 표를 `TASKS`와 같은 순서로, 항목마다 한 줄씩 업데이트한다.
 5. `/evaluate`로 채점하고 계획한 뒤 그대로 리팩토링한다. 그다음 2~3을 다시 하고, 점수(전 → 후)를 보고한다.
 
 ## 규칙

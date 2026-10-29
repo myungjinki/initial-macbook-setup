@@ -15,7 +15,7 @@ effort: xhigh
 ## 1-1. 객관 점검 (결과를 점수 근거에 그대로 쓴다)
 - `bash -n mac-setup.sh && shellcheck -x mac-setup.sh`: 경고 0개여야 한다.
 - `bash mac-setup.sh | wc -l`: 기본 화면이 24줄 이하인지 본다(80×24 기본 터미널, `--dry-run`은 전부 펼치므로 제외).
-- README 2장 대조: `TASKS`의 묶음별 항목 수와 README 2장 항목 수가 같은지, `cask:`·`formula:`의 보일 이름이 README에 모두 있는지 센다.
+- README 2장 대조: `TASKS`의 묶음별 항목 수와 README 2장 표의 묶음별 줄 수가 같은지, `cask:`·`formula:`의 보일 이름이 README에 모두 있는지 센다.
 - `.github/workflows/ci.yml`의 `CI_SKIP`에 `ASKS_INPUT` 항목이 모두 들어 있는지 본다.
 
 ## 2. 채점 (각 10점, 빡빡하게)

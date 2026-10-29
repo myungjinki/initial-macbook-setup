@@ -59,25 +59,30 @@ pbpaste > gh_token && chmod 600 gh_token
 
 진행 상황을 `상태 │ 결과 │ 항목` 표로 보여줘요(⬜ 대기 → ⏳ 진행 중 → ✅ 완료/이미 됨, ❌ 실패, ➖ 꺼짐, ⏭️ brew 필요). 기본 터미널 창(80×24)에 들어가도록 묶음은 한 줄로 접혀요. 이미 된 항목은 "이미 됨"으로 건너뛰어서 **몇 번을 다시 실행해도 안전해요.**
 
-1. Homebrew 설치
-2. Oh My Zsh 설치 (brew 패키지가 없어 공식 스크립트로 설치, `~/.zshrc`가 없으면 기본 템플릿 생성)
-3. SSH 키·GitHub
-   - SSH 키(`~/.ssh/id_ed25519`)가 없으면 새로 만들기 (1장처럼 옆에 키가 있으면 복사, 권한 600/644)
-   - `~/.ssh/config`에 `UseKeychain yes`·`AddKeysToAgent yes` 추가
-   - SSH 키 암호를 키체인에 저장 (맨 처음에 한 번 입력, 재부팅해도 다시 안 물음)
-   - GitHub 로그인: 브라우저로 (1장처럼 옆에 `gh_token`이 있으면 그걸로, git은 SSH 방식, Homebrew 전이라 gh를 임시로 받아 씀)
-   - SSH 키를 GitHub에 등록 (이미 있으면 건너뜀)
-4. 맥 설정
-   - 키보드 키 반복 속도 Fast, 반복 지연 Short (로그아웃 후 적용)
-   - 음량 0
-   - Dock 기본 앱 전부 빼기 (Finder·휴지통은 남음)
-5. Homebrew가 있어야 하는 설정
-   - 내장 디스플레이 해상도를 "More Space"로 변경 (해상도 자동 판별)
-   - 내장 디스플레이 밝기 최대
-   - git 사용자 이름·이메일 (`git config --global`)
-   - 새 터미널에서 `brew`가 잡히도록 `~/.zprofile`에 PATH 등록
-   - `git pull`할 때 rebase 대신 merge (`pull.rebase false`)
-6. 앱 설치: Google Drive, Rectangle(단축키로 창 정리), Chrome, Claude 데스크톱, ChatGPT 데스크톱, Discord, GitHub CLI(gh)
+| 묶음 | 항목 | 내용 |
+|---|---|---|
+| 1. Homebrew | Homebrew 설치 | |
+| 2. Oh My Zsh | Oh My Zsh 설치 | brew 패키지가 없어 공식 스크립트로 설치, `~/.zshrc`가 없으면 기본 템플릿 생성 |
+| 3. SSH 키·GitHub | SSH 키 | `~/.ssh/id_ed25519`가 없으면 새로 만들기 (1장처럼 옆에 키가 있으면 복사, 권한 600/644) |
+| | `~/.ssh/config` | `UseKeychain yes`·`AddKeysToAgent yes` 추가 |
+| | 키 암호를 키체인에 저장 | 맨 처음에 한 번 입력, 재부팅해도 다시 안 물음 |
+| | GitHub 로그인 | 브라우저로 (옆에 `gh_token`이 있으면 그걸로). git은 SSH 방식, Homebrew 전이라 gh를 임시로 받아 씀 |
+| | SSH 키를 GitHub에 등록 | 이미 있으면 건너뜀 |
+| 4. 맥 설정 | 키 반복 | 속도 Fast, 지연 Short (로그아웃 후 적용) |
+| | 음량 | 0 |
+| | Dock | 기본 앱 전부 빼기 (Finder·휴지통은 남음) |
+| 5. Homebrew가 있어야 하는 설정 | 내장 디스플레이 해상도 | "More Space"로 변경 (해상도 자동 판별) |
+| | 내장 디스플레이 밝기 | 최대 |
+| | git 사용자 | 이름·이메일 (`git config --global`) |
+| | brew PATH | 새 터미널에서 `brew`가 잡히도록 `~/.zprofile`에 등록 |
+| | git pull | rebase 대신 merge (`pull.rebase false`) |
+| 6. 앱 설치 | Google Drive | |
+| | Rectangle | 단축키로 창 정리 |
+| | Chrome | |
+| | Claude 데스크톱 | |
+| | ChatGPT 데스크톱 | |
+| | Discord | |
+| | GitHub CLI (gh) | |
 
 - 비밀번호는 Homebrew 설치나 pkg형 앱 설치가 남아 있을 때만 물어요.
 - 실패한 항목은 바로 아래에 로그 마지막 5줄이 보여요. 전체 로그는 `~/Library/Logs/mac-setup.log`에 실행마다 이어서 쌓여요.
