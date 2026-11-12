@@ -8,6 +8,7 @@
 
 | 번호 | 구분 | 할 일 | 차례 |
 |---|---|---|---|
+| T-1 | 할 일 | `TODO.md`의 남은 항목을 `TASKS.md`로 옮기고(`T-번호`·`차례` 붙이기) `TODO.md`를 지운다. `AGENTS.md`·`README.md`의 `TODO.md` 언급을 `TASKS.md`로 바꾼다 | AI |
 
 
 ## 주기적
